@@ -66,7 +66,10 @@ export default function DoctorDashboard() {
         schema: 'public',
         table: 'appointments',
         filter: `doctor_id=eq.${user.id}`
-      }, () => {
+      }, (payload) => {
+        if (payload.new?.status === 'CONFIRMED' && payload.old?.status === 'ACCEPTED_PAYMENT_PENDING') {
+          toast.success("Payment received! A new consultation is ready.", { duration: 6000, icon: '💸' });
+        }
         fetchDashboardData(); // Refresh queue instantly when patient books or pays
       })
       .subscribe();
