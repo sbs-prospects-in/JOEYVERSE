@@ -170,6 +170,7 @@ CREATE POLICY "Doctors view patients" ON public.pets FOR SELECT USING (
 CREATE POLICY "Users view own appointments" ON public.appointments FOR SELECT USING (auth.uid() = owner_id OR auth.uid() = doctor_id);
 CREATE POLICY "Owners create appointments" ON public.appointments FOR INSERT WITH CHECK (auth.uid() = owner_id);
 CREATE POLICY "Doctors update appointments" ON public.appointments FOR UPDATE USING (auth.uid() = doctor_id);
+CREATE POLICY "Owners update appointments" ON public.appointments FOR UPDATE USING (auth.uid() = owner_id);
 
 -- Chats: Only participants can view.
 CREATE POLICY "Participants view chats" ON public.chats FOR SELECT USING (auth.uid() = doctor_id OR auth.uid() = owner_id);
