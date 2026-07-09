@@ -19,14 +19,6 @@ export default defineConfig({
     }
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['framer-motion', 'lucide-react', 'recharts', 'gsap'],
-          supabase: ['@supabase/supabase-js'],
-        }
-      }
-    }
+    // manualChunks removed to fix Rolldown build error on Vercel
   }
 })
