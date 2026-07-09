@@ -88,7 +88,7 @@ export default function PetOwnerDashboard() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch('http://localhost:3000/api/create-checkout', {
+      const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

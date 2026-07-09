@@ -67,8 +67,8 @@ app.post('/api/create-checkout', async (req, res) => {
         },
       ],
       mode: 'payment',
-      success_url: `http://localhost:5173/pet-owner/dashboard?payment=success`,
-      cancel_url: `http://localhost:5173/pet-owner/dashboard?payment=cancelled`,
+      success_url: `${req.headers.origin || 'http://localhost:5173'}/pet-owner/dashboard?payment=success`,
+      cancel_url: `${req.headers.origin || 'http://localhost:5173'}/pet-owner/dashboard?payment=cancelled`,
       client_reference_id: appointmentId,
     });
 
@@ -98,11 +98,10 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     const appointmentId = session.client_reference_id;
 
     if (appointmentId) {
-      // For webhooks, we need the Service Role key since it's a server-to-server request
-      // But since we are hacking it for localhost, we'll initialize an anon client just for safety
+      // For webhooks, we must use the Service Role key to bypass RLS and update the db
       const supabaseWebhookClient = createClient(
         process.env.VITE_SUPABASE_URL,
-        process.env.VITE_SUPABASE_ANON_KEY
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
       );
       
       // Update appointment status to CONFIRMED (this will fail due to RLS if anon key is used, but our frontend hack covers it)
@@ -116,7 +115,11 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
   res.json({ received: true });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Local Express server running at http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Local Express server running at http://localhost:${PORT}`);
+  });
+}
+
+export default app;
