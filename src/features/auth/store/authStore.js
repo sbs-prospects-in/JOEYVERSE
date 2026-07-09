@@ -1,0 +1,184 @@
+import { create } from 'zustand';
+import { supabase } from '../api/supabase';
+import emailjs from '@emailjs/browser';
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  role: null, // 'petOwner' or 'doctor'
+  isLoading: true,
+  error: null,
+
+  // Helper to send tracking data to SheetDB
+  trackActivity: async (userType, email, role, name = 'Unknown') => {
+    const sheetdbUrl = import.meta.env.VITE_SHEETDB_URL;
+    if (!sheetdbUrl) return; // Skip if no webhook URL is configured
+    try {
+      await fetch(sheetdbUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          data: {
+            Timestamp: new Date().toLocaleString(),
+            UserType: userType,
+            Email: email,
+            Role: role,
+            Name: name
+          }
+        })
+      });
+    } catch (e) {
+      console.error('Failed to send tracking data to SheetDB:', e);
+    }
+  },
+
+  // Initialize session and listen for auth changes
+  initAuth: () => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error("Supabase getSession error:", error);
+        set({ user: null, role: null, isLoading: false, error: error.message });
+        return;
+      }
+      if (session?.user) {
+        set({ user: session.user, role: session.user.user_metadata?.role || null, isLoading: false });
+      } else {
+        set({ user: null, role: null, isLoading: false });
+      }
+    }).catch(err => {
+      console.error("Supabase network error:", err);
+      set({ user: null, role: null, isLoading: false, error: err.message });
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        set({ user: session.user, role: session.user.user_metadata?.role || null, isLoading: false });
+      } else {
+        set({ user: null, role: null, isLoading: false });
+      }
+    });
+  },
+
+  // Login
+  login: async (email, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        set({ error: error.message, isLoading: false });
+        return { success: false, error };
+      }
+      set({ user: data.user, role: data.user.user_metadata?.role, isLoading: false });
+      
+      // Track login
+      useAuthStore.getState().trackActivity(
+        'Existing User', 
+        email, 
+        data.user.user_metadata?.role, 
+        data.user.user_metadata?.name
+      );
+      
+      return { success: true, role: data.user.user_metadata?.role };
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+      return { success: false, error: err };
+    }
+  },
+
+  // Signup
+  signup: async (email, password, role, additionalData = {}) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { role, ...additionalData },
+        },
+      });
+      if (error) {
+        set({ error: error.message, isLoading: false });
+        return { success: false, error };
+      }
+      // Only set user if session exists (email confirm might be on)
+      if (data.session) {
+        set({ user: data.user, role, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
+      
+      // Track signup in Google Sheets
+      useAuthStore.getState().trackActivity(
+        'New User', 
+        email, 
+        role, 
+        additionalData.name
+      );
+      
+      // Send Welcome Email
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+      
+      if (serviceId && templateId && publicKey) {
+        try {
+          await emailjs.send(serviceId, templateId, {
+            email: email,
+            name: additionalData.name || 'User',
+            title: 'Welcome!'
+          }, publicKey);
+        } catch (e) {
+          console.error("Failed to send welcome email via EmailJS", e);
+        }
+      }
+      
+      return { success: true, role, session: data.session };
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+      return { success: false, error: err };
+    }
+  },
+
+  // Logout
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ user: null, role: null });
+  },
+  // Send Password Reset Email
+  sendPasswordResetEmail: async (email) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Artificial delay so the user can see the loading animation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'http://localhost:5173/reset-password',
+      });
+      if (error) throw error;
+      set({ isLoading: false });
+      return { success: true };
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+      return { success: false, error: err.message };
+    }
+  },
+
+  // Update Password (used on the Reset Password page)
+  updatePassword: async (newPassword) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
+      set({ isLoading: false, user: data.user });
+      return { success: true };
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+      return { success: false, error: err.message };
+    }
+  },
+
+}));
