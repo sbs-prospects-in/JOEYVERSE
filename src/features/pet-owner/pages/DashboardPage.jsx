@@ -41,8 +41,8 @@ export default function PetOwnerDashboard() {
           pet:pets(name)
         `)
         .eq('owner_id', user.id)
-        .order('scheduled_at', { ascending: true })
-        .limit(3)
+        .order('scheduled_at', { ascending: false })
+        .limit(10)
         .then(({ data }) => {
           if (data) setAppointments(data);
         });
@@ -282,7 +282,7 @@ export default function PetOwnerDashboard() {
                         appt.status === 'ACCEPTED_PAYMENT_PENDING' ? 'bg-blue-500/20 text-blue-400' :
                         'bg-red-500/20 text-red-400'
                       }`}>
-                        {appt.status.replace('_', ' ')}
+                        {appt.status.replaceAll('_', ' ')}
                       </span>
                       
                       {appt.status === 'ACCEPTED_PAYMENT_PENDING' && (
