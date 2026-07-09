@@ -273,12 +273,9 @@ export default function DoctorDashboard() {
                         <h4 className="text-lg font-bold">{req.pet?.name || 'Pet'}</h4>
                         <p className="text-sm text-[#888]">Owner: {req.owner?.name}</p>
                       </div>
-                      <button 
-                        onClick={() => handleAction(req.id, 'CONFIRM')}
-                        className="bg-blue-500/10 border border-blue-500/30 text-blue-400 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-500 hover:text-white transition-colors shadow-lg"
-                      >
-                        Force Confirm (Dev Mode)
-                      </button>
+                      <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-3 py-1 rounded-full">
+                        Waiting for Payment
+                      </span>
                     </div>
                   ))
                 )}
