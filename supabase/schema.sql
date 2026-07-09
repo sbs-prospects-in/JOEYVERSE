@@ -234,5 +234,16 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- ==========================================
+-- 7. ENABLE REALTIME
+-- ==========================================
+-- Realtime is required for live chat and instant dashboard updates
+BEGIN;
+  DROP PUBLICATION IF EXISTS supabase_realtime;
+  CREATE PUBLICATION supabase_realtime;
+COMMIT;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.appointments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+
+-- ==========================================
 -- SUPABASE SCHEMA COMPLETE
 -- ==========================================
