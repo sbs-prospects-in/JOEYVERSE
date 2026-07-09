@@ -54,7 +54,26 @@ export default function DoctorDashboard() {
   };
 
   useEffect(() => {
+    if (!user?.id) return;
+    
     fetchDashboardData();
+
+    // Realtime subscription for live appointment requests and status updates
+    const queueChannel = supabase
+      .channel('public:appointments_doctor')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'appointments',
+        filter: `doctor_id=eq.${user.id}`
+      }, () => {
+        fetchDashboardData(); // Refresh queue instantly when patient books or pays
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(queueChannel);
+    };
   }, [user]);
 
   const toggleAvailability = async () => {

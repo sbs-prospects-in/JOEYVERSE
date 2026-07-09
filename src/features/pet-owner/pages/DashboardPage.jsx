@@ -62,6 +62,23 @@ export default function PetOwnerDashboard() {
           .eq('status', 'ACCEPTED_PAYMENT_PENDING')
           .then(() => fetchAppointments());
       }
+
+      // Realtime subscription for live appointment updates
+      const appointmentsChannel = supabase
+        .channel('public:appointments_owner')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `owner_id=eq.${user.id}`
+        }, () => {
+          fetchAppointments(); // Refresh list instantly when doctor accepts/updates
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(appointmentsChannel);
+      };
     }
   }, [user]);
 
