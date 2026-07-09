@@ -29,9 +29,21 @@ export default function ChatPage() {
         return;
       }
 
-      // Allow access if CONFIRMED. If COMPLETED, allow read-only (for this MVP, we just allow normal access or block it entirely). 
-      // Let's block it entirely if it's not CONFIRMED.
-      if (appt.status !== 'CONFIRMED') {
+      // Allow Doctor to enter if CONFIRMED and automatically upgrade to READY_FOR_CHAT
+      if (userRole === 'doctor' && appt.status === 'CONFIRMED') {
+        await supabase.from('appointments').update({ status: 'READY_FOR_CHAT' }).eq('id', appointmentId);
+        appt.status = 'READY_FOR_CHAT';
+      }
+
+      // Block Pet Owner if not yet ready
+      if (userRole === 'petOwner' && appt.status === 'CONFIRMED') {
+        toast.error(`Waiting for the doctor to start the consultation.`);
+        navigate(-1);
+        return;
+      }
+
+      // General check
+      if (appt.status !== 'READY_FOR_CHAT') {
         toast.error(`Appointment is ${appt.status}. Chat is closed.`);
         navigate(-1);
         return;

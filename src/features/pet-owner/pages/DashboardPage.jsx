@@ -71,7 +71,10 @@ export default function PetOwnerDashboard() {
           schema: 'public',
           table: 'appointments',
           filter: `owner_id=eq.${user.id}`
-        }, () => {
+        }, (payload) => {
+          if (payload.new?.status === 'READY_FOR_CHAT' && payload.old?.status === 'CONFIRMED') {
+            toast.success("The doctor is ready! You can now join the chat.", { duration: 6000, icon: '🟢' });
+          }
           fetchAppointments(); // Refresh list instantly when doctor accepts/updates
         })
         .subscribe();
@@ -295,12 +298,18 @@ export default function PetOwnerDashboard() {
                       )}
                       
                       {appt.status === 'CONFIRMED' && (
-                        <button 
-                          onClick={() => navigate(`/pet-owner/chat/${appt.id}`)}
-                          className="bg-[#bd905b] text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#d4af37] transition-colors shadow-lg flex items-center gap-2"
-                        >
-                          <MessageCircle size={16}/> Start Chat
+                        <button disabled className="bg-white/10 text-[#888] px-4 py-2 rounded-lg font-bold text-sm cursor-not-allowed flex items-center gap-2">
+                          <MessageCircle size={16}/> Waiting for Doctor...
                         </button>
+                      )}
+                      
+                      {appt.status === 'READY_FOR_CHAT' && (
+                        <Link 
+                          to={`/pet-owner/chat/${appt.id}`}
+                          className="bg-[#bd905b] text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#d4af37] transition-colors shadow-lg flex items-center gap-2 animate-pulse"
+                        >
+                          <MessageCircle size={16}/> Join Chat Now
+                        </Link>
                       )}
                     </div>
                   </div>

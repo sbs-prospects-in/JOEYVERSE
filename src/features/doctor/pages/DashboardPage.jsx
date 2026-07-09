@@ -46,7 +46,7 @@ export default function DoctorDashboard() {
         owner:owner_profiles(name)
       `)
       .eq('doctor_id', user.id)
-      .in('status', ['PENDING', 'CONFIRMED', 'ACCEPTED_PAYMENT_PENDING'])
+      .in('status', ['PENDING', 'CONFIRMED', 'ACCEPTED_PAYMENT_PENDING', 'READY_FOR_CHAT'])
       .order('scheduled_at', { ascending: true });
       
     if (reqData) setRequests(reqData);
