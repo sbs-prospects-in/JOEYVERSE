@@ -1,17 +1,16 @@
 import { createBrowserRouter } from "react-router-dom";
 import App from "./App";
 import Home from "../pages/Home/Home";
-import AboutUs from "../pages/AboutUs/AboutUs";
-import ContactUs from "../pages/ContactUs/ContactUs";
-import GetInvolved from "../pages/GetInvolved/GetInvolved";
-import CommunityStories from "../pages/CommunityStories/CommunityStories";
-import CommunityStoryDetail from "../pages/CommunityStories/CommunityStoryDetail";
-import CampaignsAdvocacy from "../pages/CampaignsAdvocacy/CampaignsAdvocacy";
-import CampaignDetail from "../pages/CampaignsAdvocacy/CampaignDetail";
-import OurWork from "../pages/OurWork/OurWork";
+import Consult from "../pages/Consult/Consult";
+import DoctorProfile from "../pages/DoctorProfile/DoctorProfile";
+import Doctors from "../pages/Doctors/Doctors";
+import RecoveryReport from "../pages/RecoveryReport/RecoveryReport";
+import Services from "../pages/Services/Services";
+import SuccessStories from "../pages/SuccessStories/SuccessStories";
+import WhyChooseUs from "../pages/WhyChooseUs/WhyChooseUs";
 import NotFound from "../pages/NotFound/NotFound";
-import LoginPage from "../features/auth/pages/LoginPage";
-import SignupPage from "../features/auth/pages/SignupPage";
+import SignIn from "../pages/SignIn/SignIn";
+import Register from "../pages/Register/Register";
 import ResetPasswordPage from "../features/auth/pages/ResetPasswordPage";
 import ProtectedRoute from "./ProtectedRoute";
 import PetOwnerDashboard from "../features/pet-owner/pages/DashboardPage";
@@ -22,26 +21,25 @@ import ChatPage from "../pages/shared/ChatPage";
 
 export const router = createBrowserRouter([
   {
-    element: <App />, // Navbar + <Outlet /> + Footer
+    element: <App />, 
     children: [
       { path: "/", element: <Home /> },
-      { path: "/about-us", element: <AboutUs /> },
-      { path: "/contact-us", element: <ContactUs /> },
-      { path: "/get-involved", element: <GetInvolved /> },
-      { path: "/community-stories", element: <CommunityStories /> },
-      { path: "/community-stories/:slug", element: <CommunityStoryDetail /> },
-      { path: "/campaigns-advocacy", element: <CampaignsAdvocacy /> },
-      { path: "/campaigns-advocacy/:slug", element: <CampaignDetail /> },
-      { path: "/our-work", element: <OurWork /> },
+      { path: "/consult", element: <Consult /> },
+      { path: "/doctor/:id", element: <DoctorProfile /> },
+      { path: "/doctors", element: <Doctors /> },
+      { path: "/recovery-report", element: <RecoveryReport /> },
+      { path: "/services", element: <Services /> },
+      { path: "/success-stories", element: <SuccessStories /> },
+      { path: "/why-choose-us", element: <WhyChooseUs /> },
     ],
   },
   {
-    path: "/login",
-    element: <LoginPage />
+    path: "/sign-in",
+    element: <SignIn />
   },
   {
-    path: "/signup",
-    element: <SignupPage />
+    path: "/register",
+    element: <Register />
   },
   {
     path: "/reset-password",

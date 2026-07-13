@@ -1,171 +1,339 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube, Heart } from 'lucide-react';
-import { PRIMARY_NAV } from '../../data/nav';
-import SocialIconLink from '../ui/SocialIconLink';
+import { 
+  Phone, Mail, MapPin, PawPrint, ShieldCheck, Clock, 
+  Instagram, Facebook, Linkedin, Youtube, Calendar, 
+  BookOpen, MessageSquare, Heart, Twitter
+} from 'lucide-react';
+
+function TransparentImage({ src, alt, className }) {
+  const [transparentSrc, setTransparentSrc] = React.useState(src);
+
+  React.useEffect(() => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      try {
+        const threshold = 240;
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        const getIndex = (x, y) => (y * width + x) * 4;
+        const queue = [];
+        const visited = new Uint8Array(width * height);
+        
+        const corners = [
+          [0, 0],
+          [width - 1, 0],
+          [0, height - 1],
+          [width - 1, height - 1]
+        ];
+        
+        for (const [cx, cy] of corners) {
+          const idx = getIndex(cx, cy);
+          if (data[idx] > threshold && data[idx + 1] > threshold && data[idx + 2] > threshold) {
+            queue.push([cx, cy]);
+            visited[cy * width + cx] = 1;
+          }
+        }
+        
+        while (queue.length > 0) {
+          const [x, y] = queue.shift();
+          const idx = getIndex(x, y);
+          data[idx + 3] = 0; // Set Alpha = 0 (Transparent)
+          
+          const neighbors = [
+            [x + 1, y],
+            [x - 1, y],
+            [x, y + 1],
+            [x, y - 1]
+          ];
+          
+          for (const [nx, ny] of neighbors) {
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const nIdx = ny * width + nx;
+              if (!visited[nIdx]) {
+                const pixelIdx = getIndex(nx, ny);
+                if (data[pixelIdx] > threshold && data[pixelIdx + 1] > threshold && data[pixelIdx + 2] > threshold) {
+                  queue.push([nx, ny]);
+                  visited[nIdx] = 1;
+                }
+              }
+            }
+          }
+        }
+        
+        ctx.putImageData(imgData, 0, 0);
+        setTransparentSrc(canvas.toDataURL());
+      } catch (err) {
+        console.error("Transparency error:", err);
+      }
+    };
+  }, [src]);
+
+  return <img src={transparentSrc} alt={alt} className={className} />;
+}
+
+function SittingCatSVG({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Tail */}
+      <path d="M78 95 C85 95 90 90 90 80 C90 70 85 62 76 62 C73 62 71 65 71 68 C71 72 74 74 76 74 C80 74 82 78 82 82 C82 86 78 89 74 89 C70 89 67 87 66 84" stroke="#e07e32" strokeWidth="6" strokeLinecap="round" />
+      <path d="M78 95 C85 95 90 90 90 80 C90 70 85 62 76 62 C73 62 71 65 71 68 C71 72 74 74 76 74 C80 74 82 78 82 82 C82 86 78 89 74 89 C70 89 67 87 66 84" stroke="#f19e58" strokeWidth="4" strokeLinecap="round" />
+
+      {/* Back feet/body base */}
+      <ellipse cx="44" cy="98" rx="14" ry="8" fill="#e07e32" />
+      <ellipse cx="76" cy="98" rx="14" ry="8" fill="#e07e32" />
+      <ellipse cx="44" cy="98" rx="13" ry="7" fill="#f19e58" />
+      <ellipse cx="76" cy="98" rx="13" ry="7" fill="#f19e58" />
+
+      {/* Main Body */}
+      <path d="M42 96 C38 80 44 55 60 55 C76 55 82 80 78 96 Z" fill="#f19e58" />
+      {/* Chest/Tummy white patch */}
+      <path d="M50 72 C45 82 52 96 60 96 C68 96 75 82 70 72 C66 66 54 66 50 72 Z" fill="#fff8f2" />
+
+      {/* Front Paws */}
+      <rect x="49" y="88" width="8" height="14" rx="4" fill="#fff8f2" stroke="#d58343" strokeWidth="1" />
+      <rect x="63" y="88" width="8" height="14" rx="4" fill="#fff8f2" stroke="#d58343" strokeWidth="1" />
+
+      {/* Collar */}
+      <path d="M43 56 C50 62 70 62 77 56" stroke="#4a90e2" strokeWidth="4" strokeLinecap="round" />
+      {/* Bell / Fish charm */}
+      <circle cx="60" cy="60" r="4.5" fill="#f5a623" />
+      <path d="M60 60 L64 57 L64 63 Z" fill="#f5a623" />
+
+      {/* Ears */}
+      {/* Left Ear */}
+      <path d="M36 42 L25 18 C25 18 36 24 45 28 Z" fill="#d58343" />
+      <path d="M37 41 L28 21 C28 21 37 26 44 30 Z" fill="#f19e58" />
+      <path d="M37 39 L31 25 C31 25 37 29 42 32 Z" fill="#fbc7cd" /> {/* Inner Pink */}
+
+      {/* Right Ear */}
+      <path d="M84 42 L95 18 C95 18 84 24 75 28 Z" fill="#d58343" />
+      <path d="M83 41 L92 21 C92 21 83 26 76 30 Z" fill="#f19e58" />
+      <path d="M83 39 L89 25 C89 25 83 29 78 32 Z" fill="#fbc7cd" /> {/* Inner Pink */}
+
+      {/* Head */}
+      <ellipse cx="60" cy="42" rx="26" ry="21" fill="#f19e58" stroke="#d58343" strokeWidth="1.5" />
+      
+      {/* White face patches */}
+      <path d="M37 46 C37 57 47 62 60 62 C73 62 83 57 83 46 C83 42 73 38 60 38 C47 38 37 42 37 46 Z" fill="#fff8f2" />
+
+      {/* Stripes on Head */}
+      <path d="M60 21 L60 27" stroke="#e07e32" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M53 22 L55 27" stroke="#e07e32" strokeWidth="3" strokeLinecap="round" />
+      <path d="M67 22 L65 27" stroke="#e07e32" strokeWidth="3" strokeLinecap="round" />
+      
+      {/* Side whiskers stripes */}
+      <path d="M36 43 L42 44" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M35 48 L40 48" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M84 43 L78 44" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M85 48 L80 48" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
+
+      {/* Eyes */}
+      {/* Left Eye: Normal circle */}
+      <circle cx="48" cy="46" r="3.5" fill="#2d1c13" />
+      <circle cx="47" cy="45" r="1" fill="#ffffff" /> {/* Eye highlight */}
+      
+      {/* Right Eye: Winking curve */}
+      <path d="M69 46 Q73 42 77 46" stroke="#2d1c13" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+
+      {/* Cheeks (pink blush) */}
+      <ellipse cx="42" cy="51" rx="3.5" ry="2" fill="#ff8b94" opacity="0.6" />
+      <ellipse cx="78" cy="51" rx="3.5" ry="2" fill="#ff8b94" opacity="0.6" />
+
+      {/* Nose & Mouth */}
+      <polygon points="59,50 61,50 60,51.5" fill="#2d1c13" />
+      <path d="M57 53 Q60 55 60 53 Q60 55 63 53" stroke="#2d1c13" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
   return (
-    <footer className="relative mt-24 bg-footer-bg border-t border-gray-200 footer-watermark pt-16 pb-8 text-gray-600">
-      
-      {/* 1. Illustration Strip (Animals Peeking Over) */}
-      <div className="absolute top-0 left-0 right-0 -translate-y-[99%] flex justify-center items-end gap-6 sm:gap-12 md:gap-16 px-4 overflow-hidden h-[90px] pointer-events-none select-none">
-        
-        {/* Floppy Eared Dog */}
-        <svg viewBox="0 0 100 80" className="w-16 sm:w-20 md:w-24 h-auto text-gray-300 fill-current translate-y-[2px] transition-transform duration-300 hover:-translate-y-2">
-          {/* Head */}
-          <path d="M20 80 C20 40, 80 40, 80 80 Z" fill="#e5e7eb" />
-          {/* Left Ear */}
-          <path d="M15 35 C5 35, 10 65, 22 55 Z" fill="#d1d5db" />
-          {/* Right Ear */}
-          <path d="M85 35 C95 35, 90 65, 78 55 Z" fill="#d1d5db" />
-          {/* Eyes */}
-          <circle cx="40" cy="55" r="4" fill="#374151" />
-          <circle cx="60" cy="55" r="4" fill="#374151" />
-          {/* Snout */}
-          <ellipse cx="50" cy="65" rx="8" ry="6" fill="#f3f4f6" />
-          <polygon points="46,63 54,63 50,68" fill="#374151" />
-          {/* Heart collar tag */}
-          <path d="M50 78 C48 76, 45 76, 45 78 C45 80, 50 82, 50 82 C50 82, 55 80, 55 78 C55 76, 52 76, 50 78 Z" fill="#e05b3d" />
-        </svg>
-
-        {/* Perky Cat */}
-        <svg viewBox="0 0 100 80" className="w-14 sm:w-16 md:w-20 h-auto text-gray-300 fill-current translate-y-[2px] transition-transform duration-300 hover:-translate-y-2">
-          {/* Head */}
-          <path d="M25 80 C25 45, 75 45, 75 80 Z" fill="#d1d5db" />
-          {/* Left Ear */}
-          <polygon points="25,50 15,20 40,42" fill="#9ca3af" />
-          {/* Right Ear */}
-          <polygon points="75,50 85,20 60,42" fill="#9ca3af" />
-          {/* Eyes */}
-          <ellipse cx="40" cy="58" rx="4" ry="3" fill="#374151" />
-          <ellipse cx="60" cy="58" rx="4" ry="3" fill="#374151" />
-          {/* Nose & Whiskers */}
-          <polygon points="48,65 52,65 50,67" fill="#e05b3d" />
-          <line x1="32" y1="67" x2="42" y2="66" stroke="#4b5563" strokeWidth="1" />
-          <line x1="32" y1="71" x2="42" y2="68" stroke="#4b5563" strokeWidth="1" />
-          <line x1="68" y1="67" x2="58" y2="66" stroke="#4b5563" strokeWidth="1" />
-          <line x1="68" y1="71" x2="58" y2="68" stroke="#4b5563" strokeWidth="1" />
-        </svg>
-
-        {/* Happy Golden Dog */}
-        <svg viewBox="0 0 100 80" className="w-18 sm:w-22 md:w-26 h-auto text-gray-300 fill-current translate-y-[2px] transition-transform duration-300 hover:-translate-y-2">
-          {/* Head */}
-          <path d="M15 80 C15 35, 85 35, 85 80 Z" fill="#fed7aa" />
-          {/* Left Droopy Ear */}
-          <path d="M12 40 C2 42, 6 70, 18 68 Z" fill="#fdba74" />
-          {/* Right Droopy Ear */}
-          <path d="M88 40 C98 42, 94 70, 82 68 Z" fill="#fdba74" />
-          {/* Eyes */}
-          <circle cx="38" cy="52" r="4.5" fill="#374151" />
-          <circle cx="62" cy="52" r="4.5" fill="#374151" />
-          {/* Snout */}
-          <path d="M38 62 C38 58, 62 58, 62 62 C62 70, 38 70, 38 62 Z" fill="#ffedd5" />
-          <polygon points="46,60 54,60 50,65" fill="#374151" />
-          {/* Tongue peeking out */}
-          <path d="M47 67 C47 67, 47 75, 50 75 C53 75, 53 67, 53 67 Z" fill="#fca5a5" />
-        </svg>
-
-        {/* Curious Puppy */}
-        <svg viewBox="0 0 100 80" className="w-14 sm:w-16 md:w-18 h-auto text-gray-300 fill-current translate-y-[2px] transition-transform duration-300 hover:-translate-y-2">
-          {/* Head (tilted slightly) */}
-          <g transform="rotate(-5, 50, 60)">
-            <path d="M22 80 C22 45, 78 45, 78 80 Z" fill="#f3f4f6" />
-            {/* Dark patch on left eye */}
-            <path d="M28 50 C28 42, 45 42, 45 55 C45 62, 28 62, 28 50 Z" fill="#e5e7eb" opacity="0.9" />
-            {/* Left Ear */}
-            <path d="M24 45 C15 35, 12 55, 20 60 Z" fill="#d1d5db" />
-            {/* Right Ear */}
-            <path d="M76 45 C85 35, 88 55, 80 60 Z" fill="#d1d5db" />
-            {/* Eyes */}
-            <circle cx="37" cy="54" r="4" fill="#374151" />
-            <circle cx="63" cy="54" r="4" fill="#374151" />
-            {/* Nose */}
-            <ellipse cx="50" cy="62" rx="6" ry="4.5" fill="#374151" />
-          </g>
+    <footer className="relative bg-[#eae3ea] text-slate-700 pt-20 pb-8 font-sans overflow-hidden border-t border-slate-900/5">
+      {/* Torn Paper Top Border */}
+      <div style={{
+        position: 'absolute',
+        top: -23,
+        left: 0,
+        right: 0,
+        height: '24px',
+        zIndex: 10,
+        overflow: 'hidden',
+        lineHeight: 0,
+        filter: 'drop-shadow(0px -3px 3px rgba(0,0,0,0.04))'
+      }}>
+        <svg viewBox="0 0 1200 24" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
+          <path d="M0,24 L0,15 Q30,8 60,18 T120,12 T180,19 T240,10 T300,20 T360,11 T420,17 T480,9 T540,19 T600,12 T660,18 T720,10 T780,20 T840,11 T900,17 T960,9 T1020,19 T1080,12 T1140,18 T1200,10 L1200,24 Z" fill="#eae3ea" />
         </svg>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Diagonal Fading Paw Prints */}
+      <div className="absolute bottom-16 right-16 flex gap-6 pointer-events-none opacity-[0.15] text-[#0f172a] z-0 select-none">
+        <PawPrint className="w-12 h-12 rotate-12 mt-8" />
+        <PawPrint className="w-16 h-16 -rotate-12 mt-3" />
+        <PawPrint className="w-20 h-20 rotate-45" />
+      </div>
+
+      <div className="container mx-auto px-6 lg:px-8 max-w-[1400px] relative z-10">
         
-        {/* 2. Three Column Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 text-sm">
+        {/* TOP SECTION: Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           
-          {/* Col 1: Brand block */}
-          <div className="md:col-span-5 flex flex-col items-start gap-4">
-            <Link to="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-gray-900 cursor-pointer">
-              <span className="p-1.5 rounded-lg bg-primary text-white flex items-center justify-center">
-                <Heart size={16} fill="currentColor" />
-              </span>
-              <span>Being Kind</span>
-            </Link>
-            <p className="text-gray-500 leading-relaxed max-w-sm mt-2">
-              Because every life matters. We are dedicated to the daily feeding, medical rescue, legal advocacy, and safety of community animals in Ahmedabad, India.
+          {/* Col 1: Brand & Desc */}
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-white rounded-full p-2.5 shadow-sm inline-flex shrink-0">
+                <PawPrint className="w-7 h-7 text-rose-500" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 leading-tight">
+                PetCare <span className="text-rose-600">Connect</span>
+              </h3>
+            </div>
+            <p className="text-[0.9rem] leading-relaxed text-slate-600">
+              Where pet parents find the best care, advice, and support. Trusted connections for happier, healthier pets and a well-balanced life.
             </p>
+            <div className="flex flex-col gap-3 mt-1 max-w-[260px]">
+              <Link 
+                to="/consult" 
+                className="bg-slate-900 text-white hover:bg-slate-800 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
+              >
+                <Calendar className="w-4.5 h-4.5" /> Book Appointment
+              </Link>
+              <Link 
+                to="/consult" 
+                className="bg-transparent border border-slate-900/20 hover:bg-slate-900/5 text-slate-800 py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all text-sm"
+              >
+                <Phone className="w-4.5 h-4.5 text-slate-700" /> Contact Now
+              </Link>
+            </div>
+            
+            {/* Cartoon Pets Sitting Side-by-Side */}
+            <div className="flex items-end gap-1 mt-4 relative h-28 w-max select-none">
+              <TransparentImage src="/images/cartoon-dog.png" alt="Cartoon Dog" className="h-28 object-contain" />
+              <SittingCatSVG className="h-20 w-20 object-contain ml-[-20px] pb-1 shrink-0" />
+              {/* Heart bubble */}
+              <div className="absolute top-4 left-24 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
+                <Heart className="w-3 h-3 fill-current text-white" />
+              </div>
+            </div>
           </div>
 
-          {/* Col 2: Quick Links */}
-          <div className="md:col-span-3 flex flex-col items-start gap-4">
-            <h3 className="font-semibold text-gray-900 tracking-wider uppercase text-xs">Quick Links</h3>
-            <ul className="space-y-2.5">
-              {PRIMARY_NAV.map((link) => (
-                <li key={link.path}>
-                  <Link 
-                    to={link.path} 
-                    className="hover:text-primary transition-colors duration-200 cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-gray-300" />
-                    {link.label}
+          {/* Col 2: Pages */}
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <BookOpen className="w-5 h-5 text-rose-600" />
+              <h4 className="text-lg font-bold text-slate-900 tracking-wide">Pages</h4>
+            </div>
+            <ul className="flex flex-col gap-3">
+              {[
+                { name: 'Home', path: '/' },
+                { name: 'About Us', path: '/' },
+                { name: 'Services', path: '/services' },
+                { name: 'Our Team', path: '/doctors' },
+                { name: 'Blog', path: '/' },
+                { name: 'FAQs', path: '/' },
+              ].map((link, i) => (
+                <li key={i} className="border-b border-dashed border-slate-900/10 pb-2.5 last:border-0 last:pb-0">
+                  <Link to={link.path} className="flex items-center gap-2 text-sm text-slate-600 hover:text-rose-600 transition-colors group">
+                    <span className="text-slate-400 group-hover:text-rose-600 transition-colors">›</span> {link.name}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Col 3: Find Us */}
-          <div className="md:col-span-4 flex flex-col items-start gap-4">
-            <h3 className="font-semibold text-gray-900 tracking-wider uppercase text-xs">Find Us</h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-start gap-2.5">
-                <MapPin size={16} className="text-primary shrink-0 mt-0.5" />
-                <span>Makarba, Ahmedabad, Gujarat, India - 380051</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Phone size={16} className="text-primary shrink-0" />
-                <a href="tel:+919876543210" className="hover:text-primary transition-colors">+91 98765 43210</a>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Mail size={16} className="text-primary shrink-0" />
-                <a href="mailto:info@beingkind.org" className="hover:text-primary transition-colors">info@beingkind.org</a>
-              </div>
+          {/* Col 3: Contact */}
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <Phone className="w-5 h-5 text-rose-600" />
+              <h4 className="text-lg font-bold text-slate-900 tracking-wide">Contact</h4>
             </div>
+            <ul className="flex flex-col gap-5">
+              <li className="flex items-start gap-3.5 text-sm text-slate-600">
+                <MapPin className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <span>123, Pet Care Street,<br/>Happy Paws City, 380001</span>
+              </li>
+              <li className="flex items-center gap-3.5 text-sm text-slate-600">
+                <Mail className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>hello@petcareconnect.com</span>
+              </li>
+              <li className="flex items-center gap-3.5 text-sm text-slate-600">
+                <Phone className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>+91 98765 43210</span>
+              </li>
+              <li className="flex items-center gap-3.5 text-sm text-slate-600">
+                <Clock className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>Mon - Sat: 9:00 AM - 7:00 PM</span>
+              </li>
+              <li className="flex items-center gap-3.5 text-sm text-slate-600">
+                <MessageSquare className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>Chat with us: +91 98765 43210</span>
+              </li>
+            </ul>
+          </div>
 
-            <div className="mt-4 w-full">
-              <h4 className="font-semibold text-gray-800 text-xs mb-3">Social Media</h4>
-              <div className="flex items-center gap-3">
-                <SocialIconLink icon={Facebook} href="https://facebook.com" label="Facebook" />
-                <SocialIconLink icon={Twitter} href="https://twitter.com" label="Twitter / X" />
-                <SocialIconLink icon={Instagram} href="https://www.instagram.com/beingkind_india/" label="Instagram" />
-                <SocialIconLink icon={Youtube} href="https://youtube.com" label="YouTube" />
-              </div>
+          {/* Col 4: Newsletter */}
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <Mail className="w-5 h-5 text-rose-600" />
+              <h4 className="text-lg font-bold text-slate-900 tracking-wide">Newsletter</h4>
+            </div>
+            <p className="text-sm mb-6 text-slate-600 leading-relaxed">
+              Get pet tips, care guides & updates straight to your inbox.
+            </p>
+            <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-3">
+              <input 
+                type="email" 
+                placeholder="Enter your email address" 
+                required 
+                className="bg-white/60 border border-slate-900/10 focus:border-slate-900/30 outline-none rounded-xl px-4 py-3.5 text-sm text-slate-950 w-full transition-colors placeholder:text-slate-500"
+              />
+              <button 
+                type="submit" 
+                className="bg-slate-900 text-white hover:bg-slate-800 font-bold rounded-xl px-4 py-3.5 text-sm w-full transition-colors shadow-sm"
+              >
+                Subscribe Now
+              </button>
+            </form>
+            <div className="flex items-center gap-2 mt-4 text-xs text-slate-500">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>We respect your privacy. No spam.</span>
             </div>
           </div>
 
         </div>
 
-        {/* 3. Bottom Legal Bar */}
-        <div className="mt-16 pt-8 border-t border-gray-200/60 text-center text-xs text-gray-400">
-          <p>
-            © {currentYear} Being Kind. All Rights Reserved.{' '}
-            <Link to="/terms" className="hover:text-primary transition-colors underline">Terms & Conditions</Link>
-            {' '}and{' '}
-            <Link to="/privacy" className="hover:text-primary transition-colors underline">Privacy Policy</Link>.
+        {/* BOTTOM BAR */}
+        <div className="pt-8 border-t border-slate-900/10 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-xs text-slate-500">
+            © 2026 PetCare Connect. All rights reserved.
           </p>
-        </div>
+          
+          <div className="flex gap-2">
+            <a href="#" className="w-9 h-9 rounded-full bg-slate-900/5 flex items-center justify-center text-slate-700 hover:bg-slate-900/10 transition-colors"><Instagram className="w-4 h-4" /></a>
+            <a href="#" className="w-9 h-9 rounded-full bg-slate-900/5 flex items-center justify-center text-slate-700 hover:bg-slate-900/10 transition-colors"><Facebook className="w-4 h-4" /></a>
+            <a href="#" className="w-9 h-9 rounded-full bg-slate-900/5 flex items-center justify-center text-slate-700 hover:bg-slate-900/10 transition-colors"><Twitter className="w-4 h-4" /></a>
+            <a href="#" className="w-9 h-9 rounded-full bg-slate-900/5 flex items-center justify-center text-slate-700 hover:bg-slate-900/10 transition-colors"><Linkedin className="w-4 h-4" /></a>
+            <a href="#" className="w-9 h-9 rounded-full bg-slate-900/5 flex items-center justify-center text-slate-700 hover:bg-slate-900/10 transition-colors"><Youtube className="w-4 h-4" /></a>
+          </div>
 
+          <div className="flex gap-4 text-xs text-slate-500">
+            <a href="#" className="hover:text-slate-700 transition-colors">Terms & Conditions</a>
+            <span>|</span>
+            <a href="#" className="hover:text-slate-700 transition-colors">Privacy Policy</a>
+          </div>
+        </div>
+        
       </div>
     </footer>
   );
