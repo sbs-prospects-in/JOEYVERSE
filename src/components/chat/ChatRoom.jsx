@@ -2,26 +2,241 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../features/auth/api/supabase';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../features/auth/store/authStore';
+import { Send, ShieldCheck, CheckCircle, Phone, PhoneCall, PhoneOff, Mic, MicOff, Trash2, StopCircle } from 'lucide-react';
 
 export default function ChatRoom({ consultation, currentUserId, otherPersonName }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
   
   // Billing state
   const [activeSeconds, setActiveSeconds] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   const [consultationStatus, setConsultationStatus] = useState(consultation.status);
   const [endTime, setEndTime] = useState(consultation.ended_at);
-  const { role: userRole } = useAuthStore();
-  const { user } = useAuthStore();
+  const { role: userRole, user } = useAuthStore();
   
-  // Handle final billing deduction when consultation is completed
+  // WebRTC Call State
+  const [callStatus, setCallStatus] = useState('idle'); // 'idle' | 'calling' | 'receiving' | 'active'
+  const [isMuted, setIsMuted] = useState(false);
+  const [incomingCallData, setIncomingCallData] = useState(null);
+
+  // Voice Note State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingIntervalRef = useRef(null);
+
+  const typingChannelRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  // WebRTC Refs
+  const peerConnectionRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const webrtcChannelRef = useRef(null);
+
+  const callStatusRef = useRef(callStatus);
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
+  // -------------------------------------------------------------
+  // WebRTC Signaling and Initialization
+  // -------------------------------------------------------------
+  useEffect(() => {
+    // Only run once per consultation
+    const channel = supabase.channel(`webrtc:consultation_${consultation.id}`, {
+      config: { broadcast: { self: false } }
+    });
+
+    channel
+      .on('broadcast', { event: 'call-offer' }, (payload) => {
+        // Auto-reject if already in a call
+        if (callStatusRef.current !== 'idle') {
+          channel.send({ type: 'broadcast', event: 'end-call' });
+          return;
+        }
+        setIncomingCallData(payload.payload);
+        setCallStatus('receiving');
+      })
+      .on('broadcast', { event: 'call-answer' }, async (payload) => {
+        if (peerConnectionRef.current) {
+          try {
+            await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(payload.payload.answer));
+            setCallStatus('active');
+          } catch (err) {
+            console.error("Error setting remote description", err);
+          }
+        }
+      })
+      .on('broadcast', { event: 'ice-candidate' }, async (payload) => {
+        if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
+          try {
+            await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(payload.payload.candidate));
+          } catch (e) {
+             console.error('Error adding received ice candidate', e);
+          }
+        } else if (peerConnectionRef.current) {
+           // Queue the candidate if remote description isn't set yet
+           if (!window.iceCandidateQueue) window.iceCandidateQueue = [];
+           window.iceCandidateQueue.push(payload.payload.candidate);
+        }
+      })
+      .on('broadcast', { event: 'end-call' }, () => {
+         endCallLocal();
+         toast.success("Voice call ended by the other person.");
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          webrtcChannelRef.current = channel;
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      endCallLocal();
+    };
+  }, [consultation.id]);
+
+  const initWebRTC = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStreamRef.current = stream;
+
+    const configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] };
+    const peerConnection = new RTCPeerConnection(configuration);
+    peerConnectionRef.current = peerConnection;
+
+    stream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, stream);
+    });
+
+    peerConnection.onicecandidate = event => {
+      if (event.candidate && webrtcChannelRef.current) {
+        webrtcChannelRef.current.send({
+          type: 'broadcast',
+          event: 'ice-candidate',
+          payload: { candidate: event.candidate }
+        });
+      }
+    };
+
+    peerConnection.ontrack = event => {
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = event.streams[0];
+        // Must explicitly play on some browsers
+        remoteAudioRef.current.play().catch(e => console.error("Audio play error", e));
+      }
+    };
+
+    return peerConnection;
+  };
+
+  const startCall = async () => {
+    try {
+      setCallStatus('calling');
+      const pc = await initWebRTC();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      webrtcChannelRef.current.send({
+        type: 'broadcast',
+        event: 'call-offer',
+        payload: { offer, caller: user.id }
+      });
+      toast("Calling...", { icon: '📞' });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to access microphone. Please check permissions.");
+      setCallStatus('idle');
+    }
+  };
+
+  const acceptCall = async () => {
+    try {
+      const pc = await initWebRTC();
+      const offer = incomingCallData?.offer;
+      if (!offer) return;
+
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      // Process any queued ICE candidates that arrived before the remote description was set
+      if (window.iceCandidateQueue) {
+        for (const candidate of window.iceCandidateQueue) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {
+            console.error('Error adding queued ice candidate', e);
+          }
+        }
+        window.iceCandidateQueue = [];
+      }
+
+      webrtcChannelRef.current.send({
+        type: 'broadcast',
+        event: 'call-answer',
+        payload: { answer }
+      });
+
+      setCallStatus('active');
+      toast.success("Voice call connected!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to connect call.");
+      setCallStatus('idle');
+    }
+  };
+
+  const rejectCall = () => {
+    webrtcChannelRef.current.send({ type: 'broadcast', event: 'end-call' });
+    setCallStatus('idle');
+  };
+
+  const endCallLocal = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null;
+    }
+    setCallStatus('idle');
+    setIsMuted(false);
+    setIncomingCallData(null);
+  };
+
+  const hangUp = () => {
+    webrtcChannelRef.current.send({ type: 'broadcast', event: 'end-call' });
+    endCallLocal();
+    toast("You ended the voice call.");
+  };
+
+  const toggleMute = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsMuted(!localStreamRef.current.getAudioTracks()[0].enabled);
+    }
+  };
+
+
+  // -------------------------------------------------------------
+  // Billing, Messages, and existing logic
+  // -------------------------------------------------------------
   useEffect(() => {
     if (consultationStatus === 'COMPLETED' && userRole === 'petOwner' && user?.id) {
       const deductFinalFee = async () => {
         try {
-          // Check if already deducted by looking for a transaction
           const desc = `Consultation Fee - ${consultation.id}`;
           const { data: existingTx } = await supabase
             .from('wallet_transactions')
@@ -30,14 +245,12 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             .maybeSingle();
 
           if (!existingTx) {
-            // Calculate final fee
             const start = new Date(consultation.started_at || consultation.created_at).getTime();
             const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
             const seconds = Math.floor((end - start) / 1000);
             const intervals = Math.ceil(Math.max(seconds, 0) / 60);
             const fee = intervals * consultation.per_minute_rate;
 
-            // Get wallet
             const { data: wallet } = await supabase
               .from('wallets')
               .select('id, balance')
@@ -47,12 +260,10 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             if (wallet) {
               const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
               const currentBalance = parseFloat(wallet.balance) + localOffset;
-              const newBalance = Math.max(0, currentBalance - fee);
               const newDbBalance = Math.max(0, parseFloat(wallet.balance) - fee);
               
               let rlsBlocked = false;
 
-              // Deduct from DB
               const { data: updateData } = await supabase
                 .from('wallets')
                 .update({ balance: newDbBalance })
@@ -64,10 +275,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
               }
 
               if (rlsBlocked) {
-                // RLS Blocked: apply to local storage
                 localStorage.setItem(`wallet_offset_${user.id}`, localOffset - fee);
               } else {
-                // Record tx in DB only if wallet updated
                 await supabase.from('wallet_transactions').insert({
                   wallet_id: wallet.id,
                   amount: -fee,
@@ -75,7 +284,6 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                   description: desc
                 });
               }
-              toast.success(`₹${fee} deducted for the consultation.`);
             }
           }
         } catch (err) {
@@ -85,11 +293,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       deductFinalFee();
     }
   }, [consultationStatus, userRole, consultation, endTime, user?.id]);
-  
-  const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    // 1. Fetch existing messages using consultation_id instead of chat_id
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from('messages')
@@ -106,7 +311,6 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
 
     fetchMessages();
 
-    // 2. Initial Wallet Balance Fetch & Subscription
     let walletChannel;
     if (userRole === 'petOwner') {
       const fetchWallet = async () => {
@@ -131,7 +335,6 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         .subscribe();
     }
 
-    // 3. Subscribe to Realtime new messages
     const messageChannel = supabase
       .channel(`public:messages:consultation_id=eq.${consultation.id}`)
       .on('postgres_changes', {
@@ -143,11 +346,12 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         if (payload.new.sender_id !== currentUserId) {
           setMessages(prev => [...prev, payload.new]);
           scrollToBottom();
+          // If we receive a message from them, they stopped typing
+          setIsTyping(false);
         }
       })
       .subscribe();
       
-      // 4. Subscribe to consultation changes (e.g. server ends it due to low balance)
       const consultationChannel = supabase
         .channel(`public:consultations:id=eq.${consultation.id}`)
         .on('postgres_changes', {
@@ -159,11 +363,30 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
            if (payload.new.status === 'COMPLETED' && consultationStatus !== 'COMPLETED') {
              setConsultationStatus('COMPLETED');
              setEndTime(payload.new.ended_at || new Date().toISOString());
+             // Ensure call is hung up when consultation ends completely
+             endCallLocal();
            }
         })
         .subscribe();
         
-      // 5. Fallback polling for new messages (every 3s)
+      // Typing indicator broadcast channel
+      const tChannel = supabase.channel(`typing:consultation_${consultation.id}`, {
+        config: { broadcast: { self: false } }
+      });
+
+      tChannel
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          setIsTyping(payload.payload.isTyping);
+          if (payload.payload.isTyping) {
+            scrollToBottom();
+          }
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            typingChannelRef.current = tChannel;
+          }
+        });
+        
       const fallbackMsgInterval = setInterval(async () => {
         const { data } = await supabase
           .from('messages')
@@ -198,13 +421,13 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       return () => {
         supabase.removeChannel(messageChannel);
         supabase.removeChannel(consultationChannel);
+        supabase.removeChannel(tChannel);
         if (walletChannel) supabase.removeChannel(walletChannel);
         clearInterval(fallbackMsgInterval);
         clearInterval(fallbackConsInterval);
       };
   }, [consultation.id, consultation.per_minute_rate, currentUserId, userRole]);
 
-  // Active Timer (Purely visual now, billing is server-side)
   useEffect(() => {
     let interval;
     if (consultationStatus === 'ACTIVE') {
@@ -224,12 +447,46 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     }, 100);
   };
 
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+    
+    if (typingChannelRef.current) {
+      typingChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { isTyping: true }
+      });
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      if (typingChannelRef.current) {
+        typingChannelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { isTyping: false }
+        });
+      }
+    }, 2000);
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
     const messageText = newMessage.trim();
     setNewMessage('');
+    
+    // Clear typing indicator immediately
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (typingChannelRef.current) {
+      typingChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { isTyping: false }
+      });
+    }
     
     const tempMessage = {
       id: Math.random().toString(),
@@ -252,7 +509,95 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     }]);
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-500">Loading chat...</div>;
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        // Safely stop the microphone tracks after we finish recording
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+
+        if (audioChunksRef.current.length > 0) {
+          const audioType = audioChunksRef.current[0].type || 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: audioType });
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = () => {
+            const base64AudioMessage = reader.result;
+            sendVoiceMessage(base64AudioMessage);
+          };
+        }
+      };
+
+      // Use a timeslice to ensure data flushes reliably
+      mediaRecorder.start(200);
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+    } catch (err) {
+      console.error("Error accessing microphone for voice note:", err);
+      toast.error("Could not access microphone.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      audioChunksRef.current = []; // Clear chunks so onstop ignores it
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  const sendVoiceMessage = async (base64String) => {
+    const tempMessage = {
+      id: Math.random().toString(),
+      consultation_id: consultation.id,
+      sender_id: currentUserId,
+      message_text: base64String,
+      created_at: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, tempMessage]);
+    scrollToBottom();
+
+    const receiverId = currentUserId === consultation.doctor_id ? consultation.owner_id : consultation.doctor_id;
+
+    await supabase.from('messages').insert([{
+      consultation_id: consultation.id,
+      sender_id: currentUserId,
+      receiver_id: receiverId,
+      message_text: base64String
+    }]);
+  };
+
+  if (loading) return (
+    <div className="flex-1 flex flex-col items-center justify-center bg-white">
+      <div className="w-8 h-8 border-2 border-slate-200 border-t-[#f2687c] rounded-full animate-spin mb-4"></div>
+      <p className="text-slate-400 text-sm font-medium">Loading messages...</p>
+    </div>
+  );
 
   const formatTime = (totalSeconds) => {
     if (totalSeconds < 0) totalSeconds = 0;
@@ -262,137 +607,314 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   };
 
   return (
-    <div className="flex flex-col h-[600px] bg-white border border-slate-200 rounded-3xl overflow-hidden relative shadow-sm">
-      {/* Header */}
-      <div className="bg-slate-50 border-b border-slate-200 p-4 flex items-center justify-between z-10">
+    <div className="h-full flex flex-col bg-white relative">
+      
+      {/* Hidden Audio element for WebRTC incoming stream */}
+      <audio ref={remoteAudioRef} autoPlay />
+
+      {/* Voice Call Floating UI Overlay */}
+      {callStatus !== 'idle' && (
+        <div className="absolute top-20 left-0 right-0 z-10 flex justify-center pointer-events-none animate-in slide-in-from-top-4">
+          <div className="bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-slate-700/50 flex items-center gap-4 pointer-events-auto">
+            
+            {callStatus === 'calling' && (
+              <>
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center animate-pulse">
+                    <Phone size={14} className="text-slate-300" />
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-bold">Calling...</p>
+                    <p className="text-xs text-slate-400">Waiting for answer</p>
+                  </div>
+                </div>
+                <button onClick={hangUp} className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors">
+                  <PhoneOff size={14} />
+                </button>
+              </>
+            )}
+
+            {callStatus === 'receiving' && (
+              <>
+                <div className="flex items-center gap-3 text-white mr-4">
+                  <div className="relative">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <PhoneCall size={14} className="text-white animate-pulse" />
+                    </div>
+                    <div className="absolute inset-0 rounded-full border border-emerald-400 animate-ping" />
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-bold">Incoming Call</p>
+                    <p className="text-xs text-slate-400">from {otherPersonName}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={rejectCall} className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors">
+                    <PhoneOff size={14} />
+                  </button>
+                  <button onClick={acceptCall} className="w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 flex items-center justify-center transition-colors shadow-lg shadow-emerald-500/20">
+                    <Phone size={14} className="fill-current" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {callStatus === 'active' && (
+              <>
+                <div className="flex items-center gap-3 text-white mr-4">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <Mic size={14} className="animate-pulse" />
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-bold text-emerald-400">Voice Call Active</p>
+                    <p className="text-xs text-slate-400">Connected</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={toggleMute} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isMuted ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                    {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
+                  </button>
+                  <button onClick={hangUp} className="w-8 h-8 rounded-full bg-rose-500 text-white hover:bg-rose-600 flex items-center justify-center transition-colors shadow-lg shadow-rose-500/20">
+                    <PhoneOff size={14} />
+                  </button>
+                </div>
+              </>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* Clean Modern Header */}
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center">
-            <span className="text-rose-500 font-bold">{otherPersonName.charAt(0)}</span>
+          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+            <span className="text-slate-700 font-bold text-sm">{otherPersonName.charAt(0)}</span>
           </div>
           <div>
             <h3 className="text-slate-900 font-bold">{otherPersonName}</h3>
             {consultationStatus === 'ACTIVE' ? (
-              <span className="text-green-500 text-xs flex items-center gap-1 font-semibold">
-                <span className="w-2 h-2 bg-green-500 rounded-full inline-block animate-pulse"></span>
-                {formatTime(activeSeconds)} Active
+              <span className="text-emerald-500 text-xs font-semibold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                {formatTime(activeSeconds)}
               </span>
             ) : (
-              <span className="text-slate-500 text-xs font-semibold">
-                Consultation Ended
+              <span className="text-slate-400 text-xs font-semibold">
+                Ended
               </span>
             )}
           </div>
         </div>
         
-        {userRole === 'petOwner' && (
-          <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm flex flex-col items-end">
-            <span className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest">Wallet Balance</span>
-            <span className={`font-bold ${walletBalance < consultation.per_minute_rate ? 'text-red-500' : 'text-slate-800'}`}>
-              ₹{walletBalance}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {/* WebRTC Start Call Button */}
+          {consultationStatus === 'ACTIVE' && callStatus === 'idle' && (
+            <button 
+              onClick={startCall}
+              title="Start Voice Call"
+              className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors shadow-sm"
+            >
+              <Phone size={16} />
+            </button>
+          )}
+
+          {userRole === 'petOwner' && (
+            <div className="hidden sm:flex items-center gap-4 text-sm border-l border-slate-100 pl-4">
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rate</p>
+                <p className="font-bold text-slate-900">₹{consultation.per_minute_rate}/min</p>
+              </div>
+              <div className="w-px h-8 bg-slate-100" />
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balance</p>
+                <p className={`font-bold ${walletBalance < consultation.per_minute_rate ? 'text-rose-500' : 'text-slate-900'}`}>
+                  ₹{walletBalance}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-4">
+      {/* Messages Area - Crisp and Clear */}
+      <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400">
-            <svg className="w-12 h-12 mb-2 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <p>No messages yet. Say hello!</p>
+            <ShieldCheck size={32} className="text-slate-300 mb-3" />
+            <p className="font-medium text-slate-500">End-to-end encrypted room</p>
+            <p className="text-sm">Say hello to start the consultation.</p>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, index) => {
             const isMe = msg.sender_id === currentUserId;
+            const showTail = index === messages.length - 1 || messages[index + 1]?.sender_id !== msg.sender_id;
+            const isAudioMessage = msg.message_text.startsWith('data:audio/');
+            
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                <div 
-                  className={`max-w-[75%] p-4 rounded-2xl shadow-sm ${
-                    isMe 
-                      ? 'bg-rose-500 text-white rounded-tr-sm' 
-                      : 'bg-slate-100 text-slate-900 rounded-tl-sm border border-slate-200'
-                  }`}
-                >
-                  <p>{msg.message_text}</p>
-                  <span className={`text-[10px] mt-1 block ${isMe ? 'text-white/80' : 'text-slate-500'}`}>
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                <div className={`flex items-end gap-2 max-w-[85%] md:max-w-[70%]`}>
+                  {/* Avatar for incoming message */}
+                  {!isMe && (
+                    <div className="shrink-0 mb-1">
+                      {showTail ? (
+                        <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center">
+                          <span className="text-slate-600 font-bold text-[10px]">{otherPersonName.charAt(0)}</span>
+                        </div>
+                      ) : (
+                        <div className="w-7 h-7" />
+                      )}
+                    </div>
+                  )}
+
+                  <div 
+                    className={`px-4 py-2.5 shadow-sm text-sm ${
+                      isMe 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white border border-slate-200 text-slate-800'
+                    } ${
+                      isMe 
+                        ? showTail ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl'
+                        : showTail ? 'rounded-2xl rounded-bl-sm' : 'rounded-2xl'
+                    }`}
+                  >
+                    {isAudioMessage ? (
+                      <audio controls src={msg.message_text} className="max-w-[200px] sm:max-w-[250px] h-10" />
+                    ) : (
+                      <p className="leading-relaxed">{msg.message_text}</p>
+                    )}
+                    <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-white/80' : 'text-slate-400'}`}>
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
           })
         )}
+        
+        {/* Typing Indicator */}
+        {isTyping && (
+          <div className="flex justify-start animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-end gap-2 max-w-[85%] md:max-w-[70%]">
+              <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center shrink-0 mb-1">
+                <span className="text-slate-600 font-bold text-[10px]">{otherPersonName.charAt(0)}</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5 h-10">
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area or Call Summary */}
+      {/* Clean Input Area */}
       {consultationStatus === 'ACTIVE' ? (
-        <div className="p-4 bg-slate-50 border-t border-slate-200">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1 bg-white border border-slate-200 rounded-full px-6 py-3 text-slate-900 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all shadow-sm"
-            />
-            <button 
-              type="submit"
-              disabled={!newMessage.trim()}
-              className="w-12 h-12 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-colors disabled:opacity-50 shrink-0 shadow-sm"
-            >
-              <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
-          </form>
+        <div className="p-4 bg-white border-t border-slate-100 shrink-0">
+          {isRecording ? (
+            <div className="flex items-center gap-4 bg-red-50 rounded-full px-5 py-3 border border-red-100">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+              <span className="text-red-500 font-medium text-sm flex-1">
+                Recording... {formatTime(recordingTime)}
+              </span>
+              <button 
+                type="button"
+                onClick={cancelRecording}
+                className="w-8 h-8 rounded-full bg-white text-slate-500 hover:text-red-500 flex items-center justify-center transition-colors shadow-sm"
+                title="Cancel Recording"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button 
+                type="button"
+                onClick={stopRecording}
+                className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors shadow-sm"
+                title="Send Voice Note"
+              >
+                <Send size={16} className="translate-x-0.5 -translate-y-0.5" />
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={handleTyping}
+                placeholder="Type your message..."
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-5 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+              />
+              <button 
+                type="button"
+                onClick={startRecording}
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                  newMessage.trim() ? 'hidden' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                title="Record Voice Note"
+              >
+                <Mic size={18} />
+              </button>
+              <button 
+                type="submit"
+                disabled={!newMessage.trim()}
+                className={`w-11 h-11 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:hover:bg-blue-600 shrink-0 shadow-sm ${
+                  !newMessage.trim() ? 'hidden' : 'block'
+                }`}
+              >
+                <Send size={16} className="translate-x-0.5 -translate-y-0.5" />
+              </button>
+            </form>
+          )}
         </div>
       ) : (
-        <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col items-center">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 w-full max-w-md text-center">
-             <h3 className="text-xl font-bold text-slate-800 mb-2">Consultation Ended</h3>
-             <p className="text-slate-500 mb-4 font-medium">Duration: {(() => {
-               const start = new Date(consultation.started_at || consultation.created_at).getTime();
-               const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
-               let seconds = Math.floor((end - start) / 1000);
-               return formatTime(seconds);
-             })()}</p>
-             
-             <div className="flex justify-center gap-8 mb-6">
-               {userRole === 'petOwner' ? (
-                 <div className="bg-rose-50 text-rose-600 px-6 py-3 rounded-xl border border-rose-100 flex-1">
-                   <p className="text-xs font-bold uppercase tracking-widest mb-1">Fee Charged</p>
-                   <p className="text-2xl font-black">₹{(() => {
-                     const start = new Date(consultation.started_at || consultation.created_at).getTime();
-                     const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
-                     let seconds = Math.floor((end - start) / 1000);
-                     const intervals = Math.ceil(Math.max(seconds, 0) / 60); // Per minute charge fixed
-                     return intervals * consultation.per_minute_rate;
-                   })()}</p>
-                 </div>
-               ) : (
-                 <div className="bg-emerald-50 text-emerald-600 px-6 py-3 rounded-xl border border-emerald-100 flex-1">
-                   <p className="text-xs font-bold uppercase tracking-widest mb-1">Total Earned</p>
-                   <p className="text-2xl font-black">₹{(() => {
-                     const start = new Date(consultation.started_at || consultation.created_at).getTime();
-                     const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
-                     let seconds = Math.floor((end - start) / 1000);
-                     const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-                     return intervals * consultation.per_minute_rate;
-                   })()}</p>
-                 </div>
-               )}
+        <div className="p-8 bg-slate-50 border-t border-slate-200 flex flex-col items-center justify-center shrink-0">
+           <CheckCircle size={32} className="text-slate-400 mb-3" />
+           <h3 className="text-lg font-bold text-slate-800 mb-1">Consultation Ended</h3>
+           
+           <div className="flex items-center gap-6 mt-4">
+             <div className="text-center">
+               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Duration</p>
+               <p className="text-xl font-black text-slate-900">
+                 {(() => {
+                    const start = new Date(consultation.started_at || consultation.created_at).getTime();
+                    const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
+                    let seconds = Math.floor((end - start) / 1000);
+                    return formatTime(seconds);
+                 })()}
+               </p>
              </div>
              
-             <button 
-               onClick={() => window.location.href = userRole === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard'}
-               className="bg-slate-900 text-white font-bold py-3 px-8 rounded-xl w-full hover:bg-slate-800 transition-colors shadow-sm"
-             >
-               Return to Dashboard
-             </button>
-          </div>
+             <div className="w-px h-10 bg-slate-200" />
+             
+             {userRole === 'petOwner' ? (
+               <div className="text-center">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Final Fee</p>
+                 <p className="text-xl font-black text-blue-600">
+                   ₹{(() => {
+                      const start = new Date(consultation.started_at || consultation.created_at).getTime();
+                      const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
+                      let seconds = Math.floor((end - start) / 1000);
+                      const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+                      return intervals * consultation.per_minute_rate;
+                   })()}
+                 </p>
+               </div>
+             ) : (
+               <div className="text-center">
+                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Earned</p>
+                 <p className="text-xl font-black text-emerald-500">
+                   ₹{(() => {
+                      const start = new Date(consultation.started_at || consultation.created_at).getTime();
+                      const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
+                      let seconds = Math.floor((end - start) / 1000);
+                      const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+                      return intervals * consultation.per_minute_rate;
+                   })()}
+                 </p>
+               </div>
+             )}
+           </div>
         </div>
       )}
     </div>

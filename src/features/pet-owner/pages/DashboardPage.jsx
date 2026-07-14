@@ -2,8 +2,9 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useAuthStore } from '../../auth/store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { 
-  LogOut, Plus, Stethoscope, Star, PawPrint, 
-  Wallet, ChevronRight, MessageCircle, Clock, X 
+  LogOut, Plus, Star, PawPrint, 
+  Wallet, ChevronRight, MessageCircle, Clock, X,
+  Activity, Video, PhoneCall, Calendar, ChevronDown, User, Trash2
 } from 'lucide-react';
 import { supabase } from '../../auth/api/supabase';
 import toast, { Toaster } from 'react-hot-toast';
@@ -21,7 +22,15 @@ export default function PetOwnerDashboard() {
   const [myPets, setMyPets] = useState([]);
   const [wallet, setWallet] = useState({ balance: 0 });
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
-  const [newPet, setNewPet] = useState({ name: '', species: 'Dog', breed: '', age: '' });
+  const [selectedPet, setSelectedPet] = useState(null);
+  
+  const [newPet, setNewPet] = useState({ 
+    name: '', 
+    species: 'Dog', 
+    breed: '', 
+    age: '',
+    ageUnit: 'Years'
+  });
   
   const fetchPets = () => {
     if (user?.id) {
@@ -96,7 +105,6 @@ export default function PetOwnerDashboard() {
       fetchPets();
       fetchWallet();
 
-      // Realtime subscription for live consultation updates (e.g. Doctor accepted)
       const channel = supabase
         .channel('public:consultations_owner')
         .on('postgres_changes', {
@@ -116,7 +124,6 @@ export default function PetOwnerDashboard() {
         })
         .subscribe();
 
-      // Listen to wallet changes
       const walletChannel = supabase
         .channel('public:wallets_owner')
         .on('postgres_changes', {
@@ -129,7 +136,6 @@ export default function PetOwnerDashboard() {
         })
         .subscribe();
         
-      // Fallback polling for status changes (runs every 3 seconds)
       const fallbackInterval = setInterval(async () => {
         const oldConsList = prevConsultationsRef.current || [];
         const ringingCons = oldConsList.filter(c => c.status === 'RINGING');
@@ -171,6 +177,8 @@ export default function PetOwnerDashboard() {
     e.preventDefault();
     if (!user?.id) return;
     
+    let displayAge = `${newPet.age} ${newPet.ageUnit}`;
+    
     const { error } = await supabase.from('pets').insert({
       owner_id: user.id,
       name: newPet.name,
@@ -181,8 +189,23 @@ export default function PetOwnerDashboard() {
     
     if (!error) {
       setIsAddPetOpen(false);
-      setNewPet({ name: '', species: 'Dog', breed: '', age: '' });
+      setNewPet({ name: '', species: 'Dog', breed: '', age: '', ageUnit: 'Years' });
       fetchPets();
+      toast.success("Companion added!");
+    } else {
+      toast.error("Error adding pet");
+    }
+  };
+
+  const handleDeletePet = async (petId) => {
+    if (!confirm('Are you sure you want to remove this companion?')) return;
+    const { error } = await supabase.from('pets').delete().eq('id', petId);
+    if (!error) {
+      toast.success('Pet removed successfully');
+      setSelectedPet(null);
+      fetchPets();
+    } else {
+      toast.error('Failed to remove pet');
     }
   };
 
@@ -190,7 +213,6 @@ export default function PetOwnerDashboard() {
     if (!user?.id) return;
     
     try {
-      // Get current wallet first
       const { data: currentWallet } = await supabase
         .from('wallets')
         .select('id, balance')
@@ -207,15 +229,13 @@ export default function PetOwnerDashboard() {
       let rlsBlocked = false;
       
       if (currentWallet) {
-        const { data: updateData, error: updateError } = await supabase
+        const { data: updateData } = await supabase
           .from('wallets')
           .update({ balance: newDbBalance })
           .eq('user_id', user.id)
           .select();
         
-        if (!updateData || updateData.length === 0) {
-          rlsBlocked = true; // Supabase RLS silently blocked the update
-        }
+        if (!updateData || updateData.length === 0) rlsBlocked = true;
       } else {
         const { data: newWallet, error: insertError } = await supabase
           .from('wallets')
@@ -231,10 +251,8 @@ export default function PetOwnerDashboard() {
       }
 
       if (rlsBlocked) {
-        // Fallback: save to local storage if DB blocked it
         localStorage.setItem(`wallet_offset_${user.id}`, localOffset + 500.0);
       } else if (walletId) {
-        // Only log transaction if DB actually let us write
         await supabase.from('wallet_transactions').insert({
           wallet_id: walletId,
           amount: 500.0,
@@ -252,173 +270,209 @@ export default function PetOwnerDashboard() {
     }
   };
 
+  const displayName = user?.user_metadata?.name || user?.email || "Pet Owner";
+
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 relative overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100">
       <Toaster position="top-center" />
-      {/* Background Decorative Elements */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#f2687c]/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="w-full h-full min-h-screen px-4 sm:px-8 lg:px-12 pt-32 pb-8 relative z-10 flex flex-col">
-        
-        {/* Header */}
-        <div className="flex justify-between items-center pb-8 mb-8 border-b border-slate-200">
-          <div>
-            <h1 className="text-4xl font-bold text-slate-900 tracking-tight">
-              Welcome back
-            </h1>
-            <p className="text-slate-500 mt-2 font-medium tracking-wide">{user?.email}</p>
-          </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-300 shadow-sm"
-          >
-            <LogOut size={18} className="text-slate-500" />
-            <span className="text-sm font-medium">Sign Out</span>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Left Column */}
-          <div className="lg:col-span-4 space-y-8">
-            
-            {/* My Pets Card */}
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#f2687c]/5 rounded-bl-full transition-transform duration-700 group-hover:scale-110" />
-              
-              <div className="flex justify-between items-center mb-6 relative z-10">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-[#f2687c]/10 rounded-lg">
-                    <PawPrint size={20} className="text-[#f2687c]" />
-                  </div>
-                  <h2 className="text-xl font-semibold">My Pets</h2>
-                </div>
-                <button 
-                  onClick={() => setIsAddPetOpen(true)}
-                  className="flex items-center gap-1 text-[#f2687c] text-sm font-medium hover:text-[#d75062] transition-colors"
-                >
-                  <Plus size={16} /> Add Pet
-                </button>
+      {/* Top Navigation */}
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+                <PawPrint size={22} className="text-white" />
               </div>
-              
-              <div className="space-y-3 relative z-10">
-                {myPets.map(pet => (
-                  <div key={pet.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center hover:bg-slate-100 hover:border-slate-200 transition-colors cursor-pointer group/item">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#f2687c] to-[#d75062] flex items-center justify-center text-white font-bold shadow-sm">
-                        {pet.name[0]}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-900">{pet.name}</p>
-                        <p className="text-xs text-slate-500">{pet.breed} • {pet.age} yrs</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} className="text-slate-400 group-hover/item:text-[#f2687c] transition-colors" />
-                  </div>
-                ))}
-                
-                {myPets.length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-4">No pets added yet. Click 'Add Pet' to get started.</p>
-                )}
-              </div>
+              <span className="text-xl font-black text-slate-800 tracking-tight">Anitalk</span>
             </div>
-
-            {/* Wallet Card */}
-            <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 border border-emerald-100 p-6 rounded-2xl shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-              <div className="absolute -right-4 -top-4 text-emerald-500/5 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-12">
-                <Wallet size={120} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-emerald-100/50 text-emerald-600 rounded-lg">
-                    <Wallet size={20} />
-                  </div>
-                  <h2 className="text-lg font-bold text-slate-800">Wallet Balance</h2>
-                </div>
-                <p className="text-4xl font-black text-slate-900 mb-2 tracking-tight">₹ {Number(wallet.balance).toFixed(2)}</p>
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 mb-6 bg-emerald-100/50 w-max px-3 py-1.5 rounded-full border border-emerald-200/50 shadow-sm uppercase tracking-wider">
-                  <Star size={14} className="fill-current" /> Valid for Consultations
-                </div>
-                <button onClick={handleTopUp} className="w-full py-3 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors uppercase tracking-wider text-xs shadow-sm">
-                  <Plus size={16} /> Recharge Wallet (Mock ₹500)
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Browse Doctors & History */}
-          <div className="lg:col-span-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">Consultations</h2>
-                <p className="text-slate-500 mt-1 text-sm">Your recent calls and chat history.</p>
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <User size={16} className="text-slate-400" />
+                <span className="text-sm font-semibold text-slate-700">{displayName}</span>
               </div>
               <button 
-                onClick={() => navigate('/doctors')}
-                className="bg-[#f2687c] text-white px-5 py-2.5 rounded-xl font-bold hover:bg-[#d75062] transition-colors shadow-md flex items-center gap-2 hover:-translate-y-0.5"
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
               >
-                <MessageCircle size={18} /> Chat With Doctor Now
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        {/* Welcome Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
+            <p className="text-slate-500 mt-1 font-medium">Manage your pets, wallet, and consultations.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate('/doctors')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
+            >
+              <Video size={18} />
+              Consult Doctor
+            </button>
+            <button 
+              onClick={() => setIsAddPetOpen(true)}
+              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Add Pet
+            </button>
+          </div>
+        </div>
+
+        {/* Stats & Quick Actions Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Wallet Card */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-2 text-slate-500 font-semibold">
+                <Wallet size={18} className="text-emerald-500" /> Wallet Balance
+              </div>
+              <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">Active</span>
+            </div>
+            <div>
+              <div className="text-4xl font-black text-slate-900 tracking-tight">
+                <span className="text-slate-400 font-medium text-2xl">₹</span>
+                {Number(wallet.balance).toFixed(2)}
+              </div>
+              <button 
+                onClick={handleTopUp}
+                className="mt-6 w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={16} /> Recharge Wallet
+              </button>
+            </div>
+          </div>
+
+          {/* Find a Doctor Shortcut */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between group cursor-pointer hover:border-blue-300 transition-colors" onClick={() => navigate('/doctors')}>
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Activity size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">Find a Specialist</h3>
+              <p className="text-sm text-slate-500 font-medium">Browse our verified veterinarians and start a live consultation instantly.</p>
+            </div>
+            <div className="mt-4 flex items-center gap-1 text-sm font-bold text-blue-600">
+              Browse Doctors <ChevronRight size={16} />
+            </div>
+          </div>
+
+          {/* Add a Pet Shortcut */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between group cursor-pointer hover:border-rose-300 transition-colors" onClick={() => setIsAddPetOpen(true)}>
+            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <PawPrint size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">Register a Pet</h3>
+              <p className="text-sm text-slate-500 font-medium">Keep track of your furry friends to provide doctors with essential context.</p>
+            </div>
+            <div className="mt-4 flex items-center gap-1 text-sm font-bold text-rose-600">
+              Add Companion <ChevronRight size={16} />
+            </div>
+          </div>
+
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Main Column - Consultations */}
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <Calendar size={20} className="text-slate-700" /> Recent Consultations
+            </h2>
             
             <div className="space-y-4">
               {consultations.length === 0 ? (
-                <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm hover:shadow-md transition-shadow">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center">
+                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Clock size={24} className="text-slate-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">No Consultations Yet</h3>
-                  <p className="text-slate-500 max-w-sm mx-auto mb-6">You haven't chatted with any doctors yet. Browse our directory to connect with a vet instantly.</p>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">No Consultations Yet</h3>
+                  <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">You haven't chatted with any doctors yet. Connect with a verified professional instantly.</p>
                   <button 
                     onClick={() => navigate('/doctors')}
-                    className="text-[#f2687c] hover:text-[#d75062] transition-colors font-medium border-b border-[#f2687c]/30 pb-1"
+                    className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-blue-700 transition-colors"
                   >
-                    Browse Doctor Directory &rarr;
+                    Browse Doctors
                   </button>
                 </div>
               ) : (
                 consultations.map(cons => (
-                  <div key={cons.id} className="bg-white border border-slate-200 p-6 rounded-2xl flex items-center justify-between hover:border-[#f2687c]/50 hover:shadow-sm transition-all group hover:-translate-y-0.5">
-                    <div>
-                      <h4 className="text-lg font-bold text-slate-900">{cons.doctor?.name}</h4>
-                      <p className="text-slate-600 text-sm mb-2 font-medium">{cons.doctor?.specialization || 'General Vet'} • For {cons.pet?.name || 'Pet'}</p>
-                      <div className="flex items-center gap-4 text-slate-500 text-sm">
-                        <span className="flex items-center gap-1"><Clock size={14}/> {new Date(cons.created_at).toLocaleString()}</span>
-                        <span className="font-bold">₹{cons.per_minute_rate}/min</span>
+                  <div key={cons.id} className="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between shadow-sm hover:shadow-md transition-shadow gap-4">
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg ${
+                          cons.status === 'RINGING' ? 'bg-amber-500' :
+                          cons.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-700'
+                        }`}>
+                          {cons.doctor?.name[0] || 'D'}
+                        </div>
+                        {cons.status === 'RINGING' && (
+                          <div className="absolute inset-0 rounded-xl border-2 border-amber-400 animate-ping opacity-75" />
+                        )}
+                        {cons.status === 'ACTIVE' && (
+                          <div className="absolute inset-0 rounded-xl border-2 border-emerald-400 animate-pulse opacity-75" />
+                        )}
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-base font-bold text-slate-900 leading-tight">Dr. {cons.doctor?.name.replace('Dr. ', '') || 'Doctor'}</h4>
+                        <p className="text-slate-500 text-sm mt-0.5">
+                          {cons.doctor?.specialization || 'General Vet'} {cons.pet?.name ? `• ${cons.pet.name}` : ''}
+                        </p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider ${
-                        cons.status === 'COMPLETED' ? 'bg-slate-100 text-slate-700 border border-slate-200' :
-                        cons.status === 'RINGING' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 animate-pulse' :
-                        cons.status === 'ACTIVE' ? 'bg-green-100 text-green-700 border border-green-200' :
-                        'bg-red-100 text-red-700 border border-red-200'
-                      }`}>
-                        {cons.status}
-                      </span>
+
+                    <div className="flex items-center sm:justify-end gap-6 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0">
                       
-                      {cons.status === 'RINGING' && (
-                        <p className="text-xs text-slate-400">Waiting for doctor to answer...</p>
-                      )}
-                      
-                      {cons.status === 'ACTIVE' && (
-                        <button 
-                          onClick={() => navigate(`/pet-owner/chat/${cons.id}`)}
-                          className="bg-[#f2687c] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#d75062] transition-colors shadow-sm flex items-center gap-2"
-                        >
-                          <MessageCircle size={16}/> Return to Chat
-                        </button>
-                      )}
-                      
-                      {cons.status === 'COMPLETED' && (
-                        <button 
-                          onClick={() => navigate(`/pet-owner/chat/${cons.id}`)}
-                          className="bg-white text-[#f2687c] px-4 py-2 rounded-lg font-bold text-sm border border-[#f2687c]/30 hover:bg-[#f2687c]/5 transition-colors shadow-sm flex items-center gap-2 mt-2"
-                        >
-                          <MessageCircle size={16}/> View Chat History
-                        </button>
-                      )}
+                      <div className="hidden md:block text-right">
+                        <div className="text-sm font-bold text-emerald-600">₹{cons.per_minute_rate}/min</div>
+                        <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1 justify-end">
+                          <Clock size={12}/> {new Date(cons.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                          cons.status === 'COMPLETED' ? 'bg-slate-50 text-slate-500 border-slate-200' :
+                          cons.status === 'RINGING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          cons.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}>
+                          {cons.status}
+                        </span>
+                        
+                        {cons.status === 'ACTIVE' && (
+                          <button 
+                            onClick={() => navigate(`/pet-owner/chat/${cons.id}`)}
+                            className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-600 transition-all flex items-center gap-2"
+                          >
+                            <PhoneCall size={14} className="animate-pulse" /> Join
+                          </button>
+                        )}
+                        
+                        {cons.status === 'COMPLETED' && (
+                          <button 
+                            onClick={() => navigate(`/pet-owner/chat/${cons.id}`)}
+                            className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2"
+                          >
+                            <MessageCircle size={14}/> View Chat
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -426,80 +480,198 @@ export default function PetOwnerDashboard() {
             </div>
           </div>
 
+          {/* Sidebar Column - My Pets */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                <PawPrint size={20} className="text-slate-700" /> My Companions
+              </h2>
+              <button onClick={() => setIsAddPetOpen(true)} className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors">
+                <Plus size={16} />
+              </button>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+                {myPets.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500">
+                    <PawPrint size={32} className="mx-auto text-slate-300 mb-2" />
+                    <p className="font-semibold text-sm">No pets registered yet</p>
+                  </div>
+                ) : (
+                  myPets.map((pet, i) => (
+                    <div 
+                      key={pet.id} 
+                      onClick={() => setSelectedPet(pet)}
+                      className="p-4 hover:bg-slate-50 transition-colors cursor-pointer flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm ${
+                          i % 3 === 0 ? 'bg-rose-500' : 
+                          i % 3 === 1 ? 'bg-blue-500' : 
+                          'bg-teal-500'
+                        }`}>
+                          {pet.name[0]}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 leading-tight">{pet.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{pet.species} • {pet.age} yrs</p>
+                        </div>
+                      </div>
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-600 transition-colors" />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
       
+      {/* View Pet Details Modal */}
+      {selectedPet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => handleDeletePet(selectedPet.id)} 
+              className="absolute top-6 left-6 w-9 h-9 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-colors"
+              title="Delete Pet"
+            >
+              <Trash2 size={16} />
+            </button>
+            <button 
+              onClick={() => setSelectedPet(null)} 
+              className="absolute top-6 right-6 w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            >
+              <X size={16} />
+            </button>
+            
+            <div className="flex flex-col items-center text-center mt-4">
+              <div className="w-24 h-24 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-4xl mb-5 shadow-sm border-[6px] border-white ring-1 ring-slate-100">
+                {selectedPet.name[0].toLowerCase()}
+              </div>
+              <h3 className="text-3xl font-black text-slate-900">{selectedPet.name.toLowerCase()}</h3>
+              <p className="text-slate-500 text-sm mt-2 flex items-center justify-center gap-1.5 font-medium">
+                <PawPrint size={14} className="text-slate-400" /> {selectedPet.species} • {selectedPet.breed || 'Mixed'}
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4 w-full mt-8">
+                <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 text-center flex flex-col justify-center">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Age</div>
+                  <div className="text-lg font-black text-slate-800">{selectedPet.age} {selectedPet.age === 1 ? 'yr' : 'yrs'}</div>
+                </div>
+                <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 text-center flex flex-col justify-center">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">ID</div>
+                  <div className="text-xs font-bold text-slate-700 break-all">#{String(selectedPet.id).split('-')[0]}</div>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setSelectedPet(null)}
+                className="w-full mt-8 bg-slate-50 border border-slate-100 hover:bg-slate-100 text-slate-700 font-bold py-3.5 rounded-2xl transition-colors shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Pet Modal */}
       {isAddPetOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
+          <div className="bg-white rounded-2xl p-6 md:p-8 w-full max-w-md shadow-xl relative animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-900">Add a New Pet</h3>
-              <button onClick={() => setIsAddPetOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                <X size={20} />
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Register Pet</h3>
+                <p className="text-sm text-slate-500 mt-1">Add a new companion to your profile</p>
+              </div>
+              <button onClick={() => setIsAddPetOpen(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
+                <X size={16} />
               </button>
             </div>
             
             <form onSubmit={handleAddPet} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Pet's Name</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Pet's Name</label>
                 <input 
                   required
                   type="text" 
                   value={newPet.name}
                   onChange={e => setNewPet({...newPet, name: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#f2687c] focus:ring-1 focus:ring-[#f2687c] transition-all"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   placeholder="e.g. Bella"
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Species</label>
-                  <select 
-                    value={newPet.species}
-                    onChange={e => setNewPet({...newPet, species: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#f2687c] focus:ring-1 focus:ring-[#f2687c] transition-all"
-                  >
-                    <option>Dog</option>
-                    <option>Cat</option>
-                    <option>Bird</option>
-                    <option>Other</option>
-                  </select>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Species</label>
+                  <div className="relative">
+                    <select 
+                      value={newPet.species}
+                      onChange={e => setNewPet({...newPet, species: e.target.value})}
+                      className="w-full bg-white border border-slate-300 rounded-xl pl-4 pr-10 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer"
+                    >
+                      <option>Dog</option>
+                      <option>Cat</option>
+                      <option>Bird</option>
+                      <option>Rabbit</option>
+                      <option>Other</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Age (Years)</label>
-                  <input 
-                    type="number" 
-                    value={newPet.age}
-                    onChange={e => setNewPet({...newPet, age: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#f2687c] focus:ring-1 focus:ring-[#f2687c] transition-all"
-                    placeholder="e.g. 3"
-                  />
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Age</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="number" 
+                      value={newPet.age}
+                      onChange={e => setNewPet({...newPet, age: e.target.value})}
+                      className="w-1/2 bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-center"
+                      placeholder="e.g. 3"
+                    />
+                    <div className="relative w-1/2">
+                      <select 
+                        value={newPet.ageUnit}
+                        onChange={e => setNewPet({...newPet, ageUnit: e.target.value})}
+                        className="w-full bg-white border border-slate-300 rounded-xl pl-3 pr-8 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer"
+                      >
+                        <option>Years</option>
+                        <option>Months</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Breed (Optional)</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Breed (Optional)</label>
                 <input 
                   type="text" 
                   value={newPet.breed}
                   onChange={e => setNewPet({...newPet, breed: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#f2687c] focus:ring-1 focus:ring-[#f2687c] transition-all"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   placeholder="e.g. Golden Retriever"
                 />
               </div>
               
-              <button 
-                type="submit"
-                className="w-full bg-[#f2687c] hover:bg-[#d75062] text-white font-bold py-3 rounded-xl transition-colors mt-4 shadow-sm hover:shadow-md"
-              >
-                Save Pet
-              </button>
+              <div className="pt-4">
+                <button 
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors shadow-sm"
+                >
+                  Save Companion
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
+      
     </div>
   );
 }

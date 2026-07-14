@@ -3,10 +3,11 @@ import { useAuthStore } from '../../auth/store/authStore';
 import { supabase } from '../../auth/api/supabase';
 import { useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from 'recharts';
 import { 
   LogOut, Activity, Users, Star, IndianRupee, 
-  Clock, CheckCircle, XCircle, ChevronRight, Bell, MessageCircle
+  Clock, CheckCircle, XCircle, ChevronRight, Bell, MessageCircle,
+  TrendingUp, Calendar, Zap, ShieldCheck, X, PhoneCall
 } from 'lucide-react';
 
 export default function DoctorDashboard() {
@@ -23,7 +24,6 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true);
 
   const handleLogout = async () => {
-    // Ensure we mark them OFFLINE when they log out
     if (isOnline && user?.id) {
       await supabase.from('doctor_profiles').update({ status: 'OFFLINE' }).eq('id', user.id);
     }
@@ -68,9 +68,7 @@ export default function DoctorDashboard() {
     // 2. Fetch Incoming Consultations (RINGING)
     const { data: reqData } = await supabase
       .from('consultations')
-      .select(`
-        id, status, created_at, owner_id
-      `)
+      .select(`id, status, created_at, owner_id`)
       .eq('doctor_id', user.id)
       .eq('status', 'RINGING')
       .order('created_at', { ascending: false });
@@ -80,9 +78,7 @@ export default function DoctorDashboard() {
     // 3. Fetch Active Consultations
     const { data: activeData } = await supabase
       .from('consultations')
-      .select(`
-        id, status, created_at, owner_id
-      `)
+      .select(`id, status, created_at, owner_id`)
       .eq('doctor_id', user.id)
       .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false });
@@ -189,7 +185,6 @@ export default function DoctorDashboard() {
         
       if (!error) {
         toast.success('Consultation started! redirecting...');
-        // Wait briefly for status to propagate, then go to chat
         setTimeout(() => navigate(`/doctor/chat/${consultationId}`), 1000);
       } else {
         toast.error('Failed to accept: ' + error.message);
@@ -199,7 +194,6 @@ export default function DoctorDashboard() {
         .from('consultations')
         .update({ status: 'REJECTED' })
         .eq('id', consultationId);
-      
       if (!error) {
         toast.success('Consultation rejected.');
         fetchDashboardData();
@@ -207,12 +201,10 @@ export default function DoctorDashboard() {
     } else if (action === 'CANCEL') {
       const confirmEnd = window.confirm("Are you sure you want to end this consultation?");
       if (!confirmEnd) return;
-      
       const { error } = await supabase
         .from('consultations')
         .update({ status: 'COMPLETED', ended_at: new Date().toISOString() })
         .eq('id', consultationId);
-        
       if (!error) {
         toast.success('Consultation ended.');
         fetchDashboardData();
@@ -231,7 +223,6 @@ export default function DoctorDashboard() {
         .from('consultations')
         .update({ status: 'ACTIVE', started_at: new Date().toISOString() })
         .eq('id', consultationId);
-        
       if (!error) {
         toast.success('Waitlist accepted! redirecting...');
         setTimeout(() => navigate(`/doctor/chat/${consultationId}`), 1000);
@@ -241,29 +232,27 @@ export default function DoctorDashboard() {
 
   // Mock Chart Data
   const earningsData = [
-    { name: 'Mon', earnings: 1200 },
-    { name: 'Tue', earnings: 2100 },
-    { name: 'Wed', earnings: 800 },
-    { name: 'Thu', earnings: 1600 },
-    { name: 'Fri', earnings: 2400 },
-    { name: 'Sat', earnings: 3200 },
-    { name: 'Sun', earnings: 2900 },
+    { name: 'Mon', earnings: 1200, patients: 4 },
+    { name: 'Tue', earnings: 2100, patients: 7 },
+    { name: 'Wed', earnings: 800, patients: 3 },
+    { name: 'Thu', earnings: 1600, patients: 5 },
+    { name: 'Fri', earnings: 2400, patients: 8 },
+    { name: 'Sat', earnings: 3200, patients: 10 },
+    { name: 'Sun', earnings: 2900, patients: 9 },
   ];
 
-  return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 relative overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#fff', color: '#333' } }} />
-      
-      {/* Background Decorative Gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#f2687c]/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
+  const fullDisplayName = profileData?.name || (user?.email?.includes('anjali') ? 'Dr. Anjali Mehta' : user?.email?.includes('marcus') ? 'Dr. Marcus Owens' : user?.email?.includes('priya') ? 'Dr. Priya Nair' : 'Doctor Portal');
+  const firstName = fullDisplayName.replace(/^Dr\.\s*/, '').split(' ')[0] || 'Doctor';
 
-      <div className="w-full h-full min-h-screen px-4 sm:px-8 lg:px-12 pt-32 pb-8 relative z-10 flex flex-col">
-        
-        {/* Header & Status Toggle */}
-        <div className="flex justify-between items-center pb-8 mb-8 border-b border-slate-200">
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-500/20 pb-20 overflow-x-hidden">
+      <Toaster position="top-center" />
+      
+      {/* Top Navigation / Header */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full border-2 border-slate-200 overflow-hidden shadow-sm shrink-0 bg-white">
+            <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200">
               <img 
                 src={(profileData?.email || user?.email || '').includes('anjali') ? '/images/dr-anjali.png' : '/images/dr-marcus.png'} 
                 alt="Profile" 
@@ -271,279 +260,410 @@ export default function DoctorDashboard() {
               />
             </div>
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
-                {profileData?.name || (user?.email?.includes('anjali') ? 'Dr. Anjali Mehta' : user?.email?.includes('marcus') ? 'Dr. Marcus Owens' : user?.email?.includes('priya') ? 'Dr. Priya Nair' : 'Doctor Portal')}
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                Welcome back, {firstName}
               </h1>
-              <p className="text-[#f2687c] text-sm font-medium tracking-wide">{user?.email}</p>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mt-0.5">
+                <ShieldCheck size={14} className="text-blue-500" />
+                Verified Veterinary Specialist
+              </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 bg-white border border-slate-200 px-5 py-2.5 rounded-2xl shadow-sm">
-              <span className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${isOnline ? 'text-green-500' : 'text-slate-500'}`}>
-                {isOnline && (
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                  </span>
-                )}
-                {isOnline ? 'ONLINE - Accepting Chats' : 'OFFLINE'}
-              </span>
-              <button 
-                onClick={toggleAvailability}
-                className={`w-14 h-7 rounded-full transition-all duration-300 relative shadow-inner ${isOnline ? 'bg-green-500' : 'bg-slate-200'}`}
-              >
-                <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform duration-300 shadow-md ${isOnline ? 'translate-x-8' : 'translate-x-1'}`}></div>
-              </button>
-            </div>
-            
+          <div className="flex items-center gap-4">
+            {/* Elegant Simple Status Toggle */}
+            <button 
+              onClick={toggleAvailability}
+              className={`group relative flex items-center gap-2.5 pl-2 pr-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 border shadow-sm ${
+                isOnline 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <div className={`relative w-9 h-5 rounded-full transition-colors duration-300 shrink-0 ${isOnline ? 'bg-emerald-500 shadow-inner shadow-emerald-700/20' : 'bg-slate-300 shadow-inner shadow-slate-400/20'}`}>
+                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ease-out ${isOnline ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+              <span>{isOnline ? 'Accepting Patients' : 'Currently Offline'}</span>
+            </button>
+
+            <div className="w-px h-6 bg-slate-200" />
+
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-300"
+              className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
             >
-              <LogOut size={18} className="text-slate-500" />
+              <LogOut size={16} />
             </button>
           </div>
         </div>
+      </div>
 
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        
+        {/* Metric Cards Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+          {/* Sessions Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-blue-200 transition-colors">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 mb-1">Today's Sessions</p>
+              <h3 className="text-3xl font-black text-slate-900">{todaysSessions}</h3>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <Calendar size={24} />
+            </div>
+          </div>
+
+          {/* Rating Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-amber-200 transition-colors">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 mb-1">Average Rating</p>
+              <h3 className="text-3xl font-black text-slate-900 flex items-baseline gap-1">
+                4.9 <span className="text-sm font-semibold text-slate-400">/5.0</span>
+              </h3>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
+              <Star size={24} className="fill-current" />
+            </div>
+          </div>
+
+          {/* Earnings Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-emerald-200 transition-colors">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 mb-1">Weekly Earnings</p>
+              <h3 className="text-3xl font-black text-slate-900">₹{weeklyEarnings.toLocaleString()}</h3>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+              <IndianRupee size={24} />
+            </div>
+          </div>
+        </div>
+
+        {/* Main Grid: 2 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Left Column: Request Queue */}
-          <div className="lg:col-span-4">
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm relative overflow-hidden min-h-[500px]">
-              
-              <div className="flex items-center justify-between mb-8 relative z-10">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-500/10 rounded-lg">
-                    <Bell size={20} className="text-red-500 animate-pulse" />
-                  </div>
-                  <h2 className="text-xl font-bold">Incoming Calls</h2>
-                </div>
-                <div className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+          {/* Left Column (Incoming & Waitlist) */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* Incoming Calls Panel */}
+            <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
+              isOnline && requests.length > 0 
+                ? 'bg-rose-500 border-rose-600 shadow-xl shadow-rose-500/20 text-white' 
+                : 'bg-white border-slate-200 shadow-sm'
+            }`}>
+              <div className={`px-6 py-5 border-b flex justify-between items-center ${
+                isOnline && requests.length > 0 ? 'border-rose-400/30' : 'border-slate-100'
+              }`}>
+                <h3 className={`font-bold flex items-center gap-2 ${isOnline && requests.length > 0 ? 'text-white' : 'text-slate-800'}`}>
+                  <PhoneCall size={18} className={isOnline && requests.length > 0 ? 'animate-bounce' : ''} />
+                  Incoming Calls
+                </h3>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                  isOnline && requests.length > 0 ? 'bg-white text-rose-600' : 'bg-slate-100 text-slate-600'
+                }`}>
                   {requests.length} Ringing
-                </div>
+                </span>
               </div>
               
-              {isOnline ? (
-                <div className="space-y-4 relative z-10">
-                  {requests.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400">
-                      No incoming calls right now.
+              <div className="p-6">
+                {!isOnline ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                      <Activity size={24} className="text-slate-400" />
                     </div>
-                  ) : (
-                    requests.map(req => (
-                      <div key={req.id} className="group bg-slate-50 p-5 rounded-xl border border-slate-200 hover:border-[#f2687c]/50 hover:bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden">
-                        
+                    <p className="font-semibold text-slate-600">You're Offline</p>
+                    <p className="text-sm text-slate-400 mt-1">Go online to receive calls.</p>
+                  </div>
+                ) : requests.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <div className="w-12 h-12 bg-slate-50 rounded-full border border-dashed border-slate-200 flex items-center justify-center mb-3">
+                      <CheckCircle size={24} className="text-slate-300" />
+                    </div>
+                    <p className="font-semibold text-slate-600">All clear</p>
+                    <p className="text-sm text-slate-400 mt-1">Waiting for consultations.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {requests.map(req => (
+                      <div key={req.id} className="bg-white/10 border border-white/20 rounded-xl p-4">
                         <div className="flex justify-between items-start mb-3">
-                          <p className="font-bold text-lg text-slate-900 group-hover:text-[#f2687c] transition-colors">{req.pet?.name || 'New Patient'}</p>
-                          <span className="text-xs font-medium text-slate-400 flex items-center gap-1"><Clock size={12}/> Just now</span>
+                          <div>
+                            <h4 className="font-bold text-lg leading-tight">{req.pet?.name || 'New Patient'}</h4>
+                            <p className="text-sm text-white/80">Owner: {req.owner?.name}</p>
+                          </div>
+                          <div className="bg-white/20 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                            Live Call
+                          </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-xs font-bold text-white bg-[#f2687c] px-2 py-0.5 rounded-md">{req.pet?.species || 'Consultation'}</span>
-                        </div>
-                        
-                        <p className="text-sm text-slate-500 mb-5 line-clamp-2">Owner: {req.owner?.name}</p>
-                        
-                        <div className="flex gap-3">
+                        <div className="flex gap-2 mt-4">
                           <button 
                             onClick={() => handleAction(req.id, 'ACCEPT')}
-                            className="flex-1 py-2.5 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-sm"
+                            className="flex-1 bg-white text-rose-600 font-bold py-2.5 rounded-lg hover:bg-rose-50 transition-colors flex items-center justify-center gap-2"
                           >
-                            <MessageCircle size={16} /> Accept & Chat
+                            <MessageCircle size={16} /> Accept
                           </button>
                           <button 
                             onClick={() => handleAction(req.id, 'REJECT')}
-                            className="px-3 py-2.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors flex items-center justify-center"
+                            className="w-12 flex items-center justify-center bg-rose-600/50 text-white rounded-lg hover:bg-rose-700/50 transition-colors"
                           >
-                            <XCircle size={18} />
+                            <X size={18} />
                           </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-center text-slate-500">
-                  <Activity size={48} className="text-slate-300 mb-4" />
-                  <p className="font-medium">You are offline.</p>
-                  <p className="text-sm mt-1">Toggle your status to start receiving incoming consultation calls.</p>
-                </div>
-              )}
-              
-              {/* Waiting Room (Waitlist) */}
-              {isOnline && waitlist.length > 0 && (
-                <div className="mt-8 relative z-10 border-t border-slate-100 pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold flex items-center gap-2 text-slate-700">
-                      <Users size={18} className="text-amber-500" /> Waiting Room
-                    </h2>
-                    <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full">{waitlist.length} Waiting</span>
-                  </div>
-                  <div className="space-y-3">
-                    {waitlist.map(w => (
-                      <div key={w.id} className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">{w.owner?.name}</p>
-                          <span className="text-xs text-slate-500 flex items-center gap-1"><Clock size={12}/> Waiting</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleAction(w.id, 'ACCEPT_WAITLIST')} className="bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors">Accept</button>
-                          <button onClick={() => handleAction(w.id, 'CANCEL_WAITLIST')} className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors">Cancel</button>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
+
+            {/* Waitlist Panel */}
+            {isOnline && (
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                    <Users size={18} className="text-amber-500" /> Waitlist
+                  </h3>
+                  <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
+                    {waitlist.length} Waiting
+                  </span>
+                </div>
+                <div className="p-0">
+                  {waitlist.length === 0 ? (
+                    <div className="p-8 text-center text-sm font-medium text-slate-400">
+                      Waitlist is currently empty.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {waitlist.map(w => (
+                        <div key={w.id} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                          <div>
+                            <h4 className="font-bold text-slate-900 text-sm">{w.owner?.name}</h4>
+                            <p className="text-xs font-medium text-amber-500 flex items-center gap-1 mt-0.5">
+                              <Clock size={12}/> Waiting in queue
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleAction(w.id, 'ACCEPT_WAITLIST')} 
+                              className="px-3 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-lg hover:bg-blue-100 transition-colors"
+                            >
+                              Accept
+                            </button>
+                            <button 
+                              onClick={() => handleAction(w.id, 'CANCEL_WAITLIST')} 
+                              className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-400 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors"
+                            >
+                              <X size={14}/>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Analytics & Quick Actions */}
-          <div className="lg:col-span-8 space-y-8">
+          {/* Right Column (Active & Charts) */}
+          <div className="lg:col-span-7 space-y-6">
             
-            {/* Active Consultations Section */}
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                Active Consultations <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{activeConsultations.length}</span>
-              </h2>
-              <div className="space-y-4">
+            {/* Active Consultations */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                  <MessageCircle size={18} className="text-emerald-500" /> Active Consultations
+                </h3>
+              </div>
+              
+              <div className="p-6">
                 {activeConsultations.length === 0 ? (
-                  <p className="text-slate-400">No active consultations.</p>
+                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 flex flex-col items-center justify-center text-center">
+                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                      <MessageCircle size={24} className="text-slate-300" />
+                    </div>
+                    <p className="font-semibold text-slate-600">No active chats</p>
+                    <p className="text-sm text-slate-400 mt-1">Accepted consultations will appear here.</p>
+                  </div>
                 ) : (
-                  activeConsultations.map(req => (
-                    <div key={req.id} className="bg-green-50/50 border border-green-200 p-5 rounded-xl flex items-center justify-between hover:border-green-300 transition-colors">
-                      <div>
-                        <h4 className="text-lg font-bold text-green-900">{req.pet?.name || 'Patient'}</h4>
-                        <p className="text-sm text-green-700">Owner: {req.owner?.name}</p>
-                      </div>
-                      <div className="flex gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeConsultations.map(req => (
+                      <div key={req.id} className="border border-slate-200 p-4 rounded-xl hover:border-emerald-200 hover:shadow-md transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="font-bold text-slate-900 mb-0.5">{req.owner?.name}</h4>
+                            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-2 py-0.5 rounded-full w-fit">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> In Progress
+                            </span>
+                          </div>
+                          <button 
+                            onClick={() => handleAction(req.id, 'CANCEL')}
+                            className="text-slate-400 hover:text-red-500 p-1"
+                            title="End Consultation"
+                          >
+                            <X size={16}/>
+                          </button>
+                        </div>
                         <button 
                           onClick={() => navigate(`/doctor/chat/${req.id}`)}
-                          className="bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-600 transition-colors shadow-sm flex items-center gap-2"
+                          className="w-full bg-slate-900 text-white hover:bg-slate-800 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                         >
-                          <MessageCircle size={16}/> Resume Chat
-                        </button>
-                        <button 
-                          onClick={() => handleAction(req.id, 'CANCEL')}
-                          className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-bold text-sm border border-red-200 hover:bg-red-100 transition-colors shadow-sm flex items-center gap-2"
-                        >
-                          <XCircle size={16}/> Cancel
+                          Open Chat <ChevronRight size={16}/>
                         </button>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
-            
-            {/* Past Consultations (History) Section */}
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800">
-                <CheckCircle size={20} className="text-blue-500" /> Past Consultations
-              </h2>
-              <div className="space-y-3">
-                {history.length === 0 ? (
-                  <p className="text-slate-400 text-sm">No recent consultations.</p>
-                ) : (
-                  history.map(req => (
-                    <div key={req.id} className="bg-slate-50 border border-slate-100 p-4 rounded-xl flex items-center justify-between">
-                      <div>
-                        <h4 className="font-bold text-slate-800">{req.owner?.name}</h4>
-                        <p className="text-xs text-slate-500">{new Date(req.ended_at).toLocaleDateString()} • {new Date(req.ended_at).toLocaleTimeString()}</p>
-                      </div>
-                      <button 
-                        onClick={() => navigate(`/doctor/chat/${req.id}`)}
-                        className="bg-white text-blue-600 px-3 py-1.5 rounded-lg font-bold text-xs border border-blue-200 hover:bg-blue-50 transition-colors shadow-sm flex items-center gap-2"
-                      >
-                        <MessageCircle size={14}/> View History
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-            
-            {/* Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-slate-500 text-sm font-medium">Today's Sessions</p>
-                  <div className="p-2 bg-blue-50 rounded-lg text-blue-500"><Users size={18}/></div>
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-slate-800 text-sm">Revenue Forecast</h3>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded flex items-center gap-1">
+                    <TrendingUp size={10}/> +12%
+                  </span>
                 </div>
-                <p className="text-4xl font-bold text-slate-900 tracking-tight">{todaysSessions}</p>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={earningsData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                      <XAxis dataKey="name" stroke="#cbd5e1" fontSize={10} tickLine={false} axisLine={false} dy={10}/>
+                      <YAxis stroke="#cbd5e1" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val/1000}k`} />
+                      <Tooltip 
+                        cursor={{fill: '#f8fafc'}}
+                        contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="earnings" radius={[4, 4, 4, 4]}>
+                        {earningsData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={index === earningsData.length - 1 ? '#3b82f6' : '#e2e8f0'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-slate-500 text-sm font-medium">Average Rating</p>
-                  <div className="p-2 bg-yellow-50 rounded-lg text-yellow-500"><Star size={18}/></div>
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-slate-800 text-sm">Patient Flow</h3>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                    Last 7 Days
+                  </span>
                 </div>
-                <p className="text-4xl font-bold text-slate-900 tracking-tight flex items-baseline gap-1">4.9 <span className="text-yellow-500 text-lg">⭐</span></p>
-              </div>
-
-              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-slate-500 text-sm font-medium">Earnings This Week</p>
-                  <div className="p-2 bg-[#f2687c]/10 rounded-lg text-[#f2687c] group-hover:bg-[#f2687c] group-hover:text-white transition-colors"><IndianRupee size={18}/></div>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={earningsData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorPatients" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="name" stroke="#cbd5e1" fontSize={10} tickLine={false} axisLine={false} dy={10}/>
+                      <YAxis stroke="#cbd5e1" fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Area type="monotone" dataKey="patients" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorPatients)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-                <p className="text-4xl font-bold text-[#f2687c] tracking-tight">{weeklyEarnings.toLocaleString()}</p>
               </div>
 
             </div>
-
-            {/* Earnings Chart */}
-            <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-xl font-bold">Weekly Earnings Activity</h2>
-                <button className="text-sm font-medium text-[#f2687c] flex items-center gap-1 hover:text-[#d45668] transition-colors">
-                  View Full Report <ChevronRight size={16}/>
-                </button>
-              </div>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={earningsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis 
-                      dataKey="name" 
-                      stroke="#94a3b8" 
-                      fontSize={12} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      dy={10}
-                    />
-                    <YAxis 
-                      stroke="#94a3b8" 
-                      fontSize={12} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={(value) => `₹${value}`} 
-                      dx={-10}
-                    />
-                    <Tooltip 
-                      cursor={{fill: 'rgba(0,0,0,0.02)'}} 
-                      contentStyle={{
-                        backgroundColor: '#fff', 
-                        border: '1px solid #e2e8f0', 
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-                      }} 
-                      itemStyle={{ color: '#f2687c', fontWeight: 'bold' }}
-                    />
-                    <Bar dataKey="earnings" radius={[6, 6, 6, 6]}>
-                      {
-                        earningsData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={index === earningsData.length - 1 ? '#d45668' : '#f2687c'} fillOpacity={index === earningsData.length - 1 ? 1 : 0.6} />
-                        ))
-                      }
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            
           </div>
         </div>
+
+        {/* Recent Consultations History */}
+        <div className="mt-8 mb-12 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Clock size={18} className="text-blue-500" /> Recent Consultation History
+            </h3>
+            <button className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All</button>
+          </div>
+          
+          <div className="p-0">
+            {history.length === 0 ? (
+              <div className="p-10 text-center">
+                <CheckCircle size={32} className="mx-auto text-slate-300 mb-3" />
+                <p className="font-semibold text-slate-600">No past consultations yet</p>
+                <p className="text-sm text-slate-400 mt-1">Completed sessions will appear here for your records.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 text-xs uppercase tracking-wider text-slate-500 font-bold border-b border-slate-100">
+                      <th className="px-6 py-4">Patient</th>
+                      <th className="px-6 py-4">Date & Time</th>
+                      <th className="px-6 py-4">Duration</th>
+                      <th className="px-6 py-4">Earnings</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {history.map(session => {
+                      const start = new Date(session.started_at || session.created_at).getTime();
+                      const end = new Date(session.ended_at).getTime();
+                      let seconds = Math.floor((end - start) / 1000);
+                      if (seconds < 0) seconds = 0;
+                      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                      const s = (seconds % 60).toString().padStart(2, '0');
+                      const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+                      const earnings = intervals * session.per_minute_rate;
+                      
+                      return (
+                        <tr key={session.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-slate-900">{session.owner?.name}</div>
+                            <div className="text-xs text-slate-500 font-mono mt-0.5">ID: {session.id.split('-')[0]}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-slate-700">
+                              {new Date(session.ended_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {new Date(session.ended_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-semibold text-slate-600">
+                            <div className="flex items-center gap-1.5">
+                              <Clock size={14} className="text-slate-400" />
+                              {m}:{s}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-black text-emerald-600">
+                            ₹{earnings}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                              <CheckCircle size={10} className="text-slate-400"/>
+                              Completed
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => navigate(`/doctor/chat/${session.id}`)}
+                              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                            >
+                              <MessageCircle size={12} />
+                              View Chat
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );
