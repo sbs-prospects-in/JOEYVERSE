@@ -78,40 +78,40 @@ export default function BookingPage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#bd905b]"></div></div>;
-  if (!doctor) return <div className="min-h-screen bg-[#050505] text-white p-8">Doctor not found</div>;
+  if (loading) return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f2687c]"></div></div>;
+  if (!doctor) return <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-8">Doctor not found</div>;
 
   const status = doctor.doctor_availability?.[0]?.current_status || 'Offline';
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#222', color: '#fff' } }} />
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+      <Toaster position="top-center" toastOptions={{ style: { background: '#fff', color: '#333' } }} />
       
-      <div className="max-w-3xl mx-auto bg-[#111] border border-[#222] rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-50px] right-[-50px] w-[200px] h-[200px] bg-[#bd905b]/10 blur-[80px] rounded-full pointer-events-none"></div>
+      <div className="max-w-3xl mx-auto bg-white border border-slate-200 rounded-3xl p-8 shadow-sm relative overflow-hidden hover:shadow-md transition-shadow">
+        <div className="absolute top-[-50px] right-[-50px] w-[200px] h-[200px] bg-[#f2687c]/5 blur-[80px] rounded-full pointer-events-none"></div>
         
-        <Link to="/pet-owner/doctors" className="text-[#888] hover:text-white text-sm mb-6 inline-block transition-colors">&larr; Back to Directory</Link>
+        <Link to="/pet-owner/doctors" className="text-slate-500 hover:text-slate-900 text-sm mb-6 inline-block transition-colors">&larr; Back to Directory</Link>
         
-        <div className="mb-8 border-b border-[#222] pb-8">
+        <div className="mb-8 border-b border-slate-200 pb-8">
           <h1 className="text-3xl font-light mb-2">Book Consultation</h1>
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-[#bd905b]">{doctor.name}</h2>
-            <span className="bg-white/10 px-2 py-1 rounded text-xs font-bold">{doctor.specialization || 'General Vet'}</span>
+            <h2 className="text-xl font-bold text-[#f2687c]">{doctor.name}</h2>
+            <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-bold">{doctor.specialization || 'General Vet'}</span>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-sm text-[#888]">
-            Status: <span className="text-white font-medium">{status}</span>
+          <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+            Status: <span className="text-slate-900 font-medium">{status}</span>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
           
           <div>
-            <label className="block text-sm text-[#888] mb-2">Select your Pet</label>
+            <label className="block text-sm text-slate-500 mb-2">Select your Pet</label>
             {pets.length > 0 ? (
               <select 
                 value={selectedPet}
                 onChange={(e) => setSelectedPet(e.target.value)}
-                className="w-full bg-[#050505] border border-[#333] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#bd905b] transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#f2687c] focus:ring-1 focus:ring-[#f2687c] transition-all shadow-sm"
                 required
               >
                 <option value="" disabled>-- Choose a pet --</option>
@@ -120,15 +120,15 @@ export default function BookingPage() {
                 ))}
               </select>
             ) : (
-              <div className="bg-[#050505] border border-dashed border-[#333] rounded-xl p-4 text-center">
-                <p className="text-[#888] text-sm mb-2">You haven't added any pets yet.</p>
-                <button type="button" className="text-[#bd905b] text-sm hover:underline">Add a Pet in Dashboard</button>
+              <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 text-center">
+                <p className="text-slate-500 text-sm mb-2">You haven't added any pets yet.</p>
+                <button type="button" className="text-[#f2687c] text-sm hover:underline">Add a Pet in Dashboard</button>
               </div>
             )}
           </div>
 
-          <div className="bg-[#bd905b]/10 border border-[#bd905b]/20 rounded-xl p-4 mt-6">
-            <p className="text-[#bd905b] text-sm flex gap-2 items-start">
+          <div className="bg-[#f2687c]/5 border border-[#f2687c]/20 rounded-xl p-4 mt-6">
+            <p className="text-[#f2687c] text-sm flex gap-2 items-start">
               <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -142,7 +142,7 @@ export default function BookingPage() {
           <button
             type="submit"
             disabled={submitting || pets.length === 0}
-            className="w-full bg-gradient-to-r from-[#bd905b] to-[#d4af37] text-black font-bold py-4 rounded-xl hover:shadow-[0_0_20px_rgba(189,144,91,0.4)] transition-all duration-300 disabled:opacity-50 mt-4 flex justify-center items-center gap-2 text-lg"
+            className="w-full bg-[#f2687c] text-white font-bold py-4 rounded-xl hover:bg-[#d45668] transition-all duration-300 disabled:opacity-50 mt-4 flex justify-center items-center gap-2 text-lg shadow-sm hover:shadow-md"
           >
             {submitting ? 'Sending Request...' : 'Request Instant Consult'}
           </button>

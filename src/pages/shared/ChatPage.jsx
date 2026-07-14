@@ -100,19 +100,19 @@ export default function ChatPage() {
     }, 1500);
   };
 
-  if (loading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#bd905b]"></div></div>;
+  if (loading) return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f2687c]"></div></div>;
 
   const otherPersonName = userRole === 'doctor' ? appointment.owner.name : `Dr. ${appointment.doctor.name}`;
   const backLink = userRole === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard';
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#222', color: '#fff' } }} />
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+      <Toaster position="top-center" toastOptions={{ style: { background: '#fff', color: '#333' } }} />
       
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-end mb-6">
           <div>
-            <Link to={backLink} className="text-[#888] hover:text-white text-sm mb-4 inline-block transition-colors">&larr; Back to Dashboard</Link>
+            <Link to={backLink} className="text-slate-500 hover:text-slate-900 text-sm mb-4 inline-block transition-colors">&larr; Back to Dashboard</Link>
             <h1 className="text-3xl font-light">Consultation Room</h1>
           </div>
           

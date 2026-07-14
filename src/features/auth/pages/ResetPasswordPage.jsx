@@ -33,32 +33,35 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#050505] overflow-hidden font-sans p-4">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#222', color: '#fff', borderRadius: '12px', border: '1px solid #333' } }} />
+    <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
+      <Toaster position="top-center" toastOptions={{ style: { background: '#fff', color: '#333', borderRadius: '12px', border: '1px solid #e5e7eb' } }} />
       
-      {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#bd905b]/10 blur-[120px] rounded-full pointer-events-none"></div>
+      {/* Mesh Background Blobs for Visual Glow */}
+      <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-rose-200/20 blur-3xl pointer-events-none z-0" />
+      <div className="absolute bottom-10 right-10 w-[500px] h-[500px] rounded-full bg-[#A9DFBF]/20 blur-3xl pointer-events-none z-0" />
 
-      <div className="w-full max-w-md relative z-10 bg-[#111]/80 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-2xl">
+      <div className="bg-[#A9DFBF]/10 backdrop-blur-md rounded-[36px] p-8 md:p-10 shadow-2xl border border-[#A9DFBF]/30 max-w-md w-full z-10 relative">
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block mb-4">
             <span className="text-xs tracking-[0.3em] text-[#bd905b] uppercase font-bold">PetConnect</span>
           </Link>
-          <h1 className="text-3xl font-light text-white mb-2 tracking-tight">Set New <span className="font-semibold">Password</span></h1>
-          <p className="text-[#888] text-sm">Please enter a new, secure password below.</p>
+          <h1 className="text-3xl font-light text-slate-900 mb-2 tracking-tight">Set New <span className="font-semibold">Password</span></h1>
+          <p className="text-slate-500 text-sm">Please enter a new, secure password below.</p>
         </div>
 
         <form onSubmit={handleUpdatePassword} className="space-y-6">
           <div className="group relative">
             <input
               type="password"
+              id="newPassword"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder=" "
-              className="peer w-full px-5 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-transparent focus:outline-none focus:border-[#bd905b] transition-all"
+              className="peer w-full px-5 py-4 bg-white/40 border border-slate-200/80 rounded-xl text-slate-700 placeholder-transparent focus:outline-none focus:border-[#f2687c] transition-all shadow-sm"
+              placeholder="New Password"
               required
+              minLength={6}
             />
-            <label className="absolute left-5 -top-2.5 text-xs text-[#666] bg-[#111] transition-all peer-placeholder-shown:text-base peer-placeholder-shown:top-4 peer-placeholder-shown:bg-transparent peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-[#bd905b] peer-focus:bg-[#111] px-1 pointer-events-none rounded">
+            <label className="absolute left-5 -top-2.5 text-[0.65rem] font-black text-slate-600 uppercase tracking-widest bg-transparent transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-4 peer-placeholder-shown:font-normal peer-focus:-top-2.5 peer-focus:text-[0.65rem] peer-focus:font-black peer-focus:text-rose-500 px-1 pointer-events-none rounded">
               New Password
             </label>
           </div>
@@ -66,13 +69,15 @@ export default function ResetPasswordPage() {
           <div className="group relative pt-2">
             <input
               type="password"
+              id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder=" "
-              className="peer w-full px-5 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-transparent focus:outline-none focus:border-[#bd905b] transition-all"
+              className="peer w-full px-5 py-4 bg-white/40 border border-slate-200/80 rounded-xl text-slate-700 placeholder-transparent focus:outline-none focus:border-[#f2687c] transition-all shadow-sm"
+              placeholder="Confirm Password"
               required
+              minLength={6}
             />
-            <label className="absolute left-5 -top-2.5 text-xs text-[#666] bg-[#111] transition-all peer-placeholder-shown:text-base peer-placeholder-shown:top-6 peer-placeholder-shown:bg-transparent peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-[#bd905b] peer-focus:bg-[#111] px-1 pointer-events-none rounded">
+            <label className="absolute left-5 -top-2.5 text-[0.65rem] font-black text-slate-600 uppercase tracking-widest bg-transparent transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-4 peer-placeholder-shown:font-normal peer-focus:-top-2.5 peer-focus:text-[0.65rem] peer-focus:font-black peer-focus:text-rose-500 px-1 pointer-events-none rounded">
               Confirm Password
             </label>
           </div>
@@ -80,7 +85,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#bd905b] text-black font-bold py-4 rounded-xl hover:bg-[#c99e69] hover:shadow-[0_0_20px_rgba(189,144,91,0.4)] transition-all duration-300 disabled:opacity-50 mt-4 flex justify-center items-center gap-2"
+            className="w-full bg-slate-900 hover:bg-[#f2687c] text-white font-extrabold text-xs py-4 px-6 rounded-xl transition-all duration-300 shadow-md uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? 'Updating...' : 'Update Password'}
           </button>

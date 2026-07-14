@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, PawPrint, Heart, Sparkles, HeartPulse } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/store/authStore';
 import toast, { Toaster } from 'react-hot-toast';
+import { Mail, Lock, PawPrint, Heart, Sparkles, HeartPulse } from 'lucide-react';
+
 function BoneSVG({ className }) {
   return (
     <svg className={className} viewBox="0 0 100 60" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -27,29 +28,11 @@ function FishSVG({ className }) {
 
 export default function SignIn() {
   const navigate = useNavigate();
-  const { signIn, isLoading } = useAuthStore();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const { success, error, role } = await signIn(email, password);
-    if (success) {
-      toast.success('Welcome back!');
-      if (role === 'doctor') {
-        navigate('/doctor/dashboard');
-      } else {
-        navigate('/pet-owner/dashboard');
-      }
-    } else {
-      console.error("LOGIN ERROR:", error);
-      toast.error(error?.message || "Failed to sign in");
-    }
-  };
-
+  const [role, setRole] = useState('petOwner');
+  const { login, isLoading } = useAuthStore();
   return (
     <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#222', color: '#fff', borderRadius: '12px', border: '1px solid #333' } }} />
+      <Toaster position="top-right" />
       
       {/* Mesh Background Blobs for Visual Glow */}
       <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-rose-200/20 blur-3xl pointer-events-none z-0" />
@@ -132,9 +115,48 @@ export default function SignIn() {
 
         {/* Form */}
         <form 
-          onSubmit={handleSubmit}
+          onSubmit={async (e) => { 
+            e.preventDefault(); 
+            const email = e.target.loginEmail.value;
+            const password = e.target.loginPassword.value;
+            const result = await login(email, password);
+            if (result.success) {
+              if (result.role === 'doctor' || role === 'doctor') {
+                navigate("/doctor/dashboard");
+              } else {
+                navigate("/pet-owner/dashboard");
+              }
+            } else {
+              toast.error(result.error?.message || "Login failed");
+            }
+          }}
           className="flex flex-col gap-5"
         >
+          {/* Role Selector */}
+          <div className="flex bg-slate-100/80 p-1 rounded-xl mb-2">
+            <button
+              type="button"
+              onClick={() => setRole('petOwner')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                role === 'petOwner'
+                  ? 'bg-white text-[#f2687c] shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Pet Owner
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole('doctor')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                role === 'doctor'
+                  ? 'bg-white text-emerald-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Veterinarian
+            </button>
+          </div>
           {/* Email input */}
           <div className="flex flex-col gap-2">
             <label htmlFor="loginEmail" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
@@ -145,8 +167,6 @@ export default function SignIn() {
               <input 
                 type="email" 
                 id="loginEmail" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 placeholder="doctor.mark@anitalk.com" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3.5 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
@@ -173,8 +193,6 @@ export default function SignIn() {
               <input 
                 type="password" 
                 id="loginPassword" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3.5 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
@@ -185,18 +203,9 @@ export default function SignIn() {
           {/* Submit Button */}
           <button 
             type="submit" 
-            disabled={isLoading}
-            className="w-full bg-slate-900 hover:bg-[#f2687c] text-white font-extrabold text-xs py-4 px-6 rounded-xl transition-all duration-300 shadow-md uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] mt-2 disabled:opacity-50 flex justify-center items-center gap-2"
+            className="w-full bg-slate-900 hover:bg-[#f2687c] text-white font-extrabold text-xs py-4 px-6 rounded-xl transition-all duration-300 shadow-md uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] mt-2"
           >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </>
-            ) : "Sign In"}
+            Sign In
           </button>
 
           {/* Divider */}

@@ -92,18 +92,18 @@ export default function ChatRoom({ appointmentId, chatId, currentUserId, otherPe
     await supabase.from('chats').update({ last_message_at: new Date().toISOString() }).eq('id', chatId);
   };
 
-  if (loading) return <div className="p-8 text-center text-[#888]">Loading chat...</div>;
+  if (loading) return <div className="p-8 text-center text-slate-500">Loading chat...</div>;
 
   return (
-    <div className="flex flex-col h-[600px] bg-[#111] border border-[#222] rounded-3xl overflow-hidden relative">
+    <div className="flex flex-col h-[600px] bg-white border border-slate-200 rounded-3xl overflow-hidden relative shadow-sm">
       {/* Header */}
-      <div className="bg-[#1a1a1a] border-b border-[#222] p-4 flex items-center justify-between z-10">
+      <div className="bg-slate-50 border-b border-slate-200 p-4 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#bd905b]/20 flex items-center justify-center">
-            <span className="text-[#bd905b] font-bold">{otherPersonName.charAt(0)}</span>
+          <div className="w-10 h-10 rounded-full bg-[#f2687c]/10 flex items-center justify-center">
+            <span className="text-[#f2687c] font-bold">{otherPersonName.charAt(0)}</span>
           </div>
           <div>
-            <h3 className="text-white font-bold">{otherPersonName}</h3>
+            <h3 className="text-slate-900 font-bold">{otherPersonName}</h3>
             <span className="text-green-500 text-xs flex items-center gap-1">
               <span className="w-2 h-2 bg-green-500 rounded-full inline-block animate-pulse"></span>
               Live Chat Active
@@ -115,7 +115,7 @@ export default function ChatRoom({ appointmentId, chatId, currentUserId, otherPe
       {/* Messages Area */}
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-[#555]">
+          <div className="h-full flex flex-col items-center justify-center text-slate-400">
             <svg className="w-12 h-12 mb-2 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
@@ -127,14 +127,14 @@ export default function ChatRoom({ appointmentId, chatId, currentUserId, otherPe
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                 <div 
-                  className={`max-w-[75%] p-4 rounded-2xl ${
+                  className={`max-w-[75%] p-4 rounded-2xl shadow-sm ${
                     isMe 
-                      ? 'bg-[#bd905b] text-black rounded-tr-sm' 
-                      : 'bg-[#222] text-white rounded-tl-sm border border-[#333]'
+                      ? 'bg-[#f2687c] text-white rounded-tr-sm' 
+                      : 'bg-slate-100 text-slate-900 rounded-tl-sm border border-slate-200'
                   }`}
                 >
                   <p>{msg.message_text}</p>
-                  <span className={`text-[10px] mt-1 block ${isMe ? 'text-black/60' : 'text-[#888]'}`}>
+                  <span className={`text-[10px] mt-1 block ${isMe ? 'text-white/80' : 'text-slate-500'}`}>
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -146,19 +146,19 @@ export default function ChatRoom({ appointmentId, chatId, currentUserId, otherPe
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-[#1a1a1a] border-t border-[#222]">
+      <div className="p-4 bg-slate-50 border-t border-slate-200">
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 bg-[#050505] border border-[#333] rounded-full px-6 py-3 text-white focus:outline-none focus:border-[#bd905b] transition-colors"
+            className="flex-1 bg-white border border-slate-200 rounded-full px-6 py-3 text-slate-900 focus:outline-none focus:border-[#f2687c] focus:ring-1 focus:ring-[#f2687c] transition-all shadow-sm"
           />
           <button 
             type="submit"
             disabled={!newMessage.trim()}
-            className="w-12 h-12 bg-[#bd905b] text-black rounded-full flex items-center justify-center hover:bg-[#c99e69] transition-colors disabled:opacity-50 shrink-0"
+            className="w-12 h-12 bg-[#f2687c] text-white rounded-full flex items-center justify-center hover:bg-[#d45668] transition-colors disabled:opacity-50 shrink-0 shadow-sm"
           >
             <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

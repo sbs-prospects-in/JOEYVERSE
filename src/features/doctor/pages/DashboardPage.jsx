@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../auth/store/authStore';
 import { supabase } from '../../auth/api/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -53,6 +53,12 @@ export default function DoctorDashboard() {
     setLoading(false);
   };
 
+  // Ref to store previous requests for comparing status changes since payload.old is empty without REPLICA IDENTITY FULL
+  const prevRequestsRef = useRef();
+  useEffect(() => {
+    prevRequestsRef.current = requests;
+  }, [requests]);
+
   useEffect(() => {
     if (!user?.id) return;
     
@@ -67,9 +73,12 @@ export default function DoctorDashboard() {
         table: 'appointments',
         filter: `doctor_id=eq.${user.id}`
       }, (payload) => {
-        if (payload.new?.status === 'CONFIRMED' && payload.old?.status === 'ACCEPTED_PAYMENT_PENDING') {
+        const oldAppt = prevRequestsRef.current?.find(a => a.id === payload.new?.id);
+        
+        if (payload.new?.status === 'CONFIRMED' && oldAppt?.status === 'ACCEPTED_PAYMENT_PENDING') {
           toast.success("Payment received! A new consultation is ready.", { duration: 6000, icon: '💸' });
         }
+        
         fetchDashboardData(); // Refresh queue instantly when patient books or pays
       })
       .subscribe();
@@ -120,27 +129,27 @@ export default function DoctorDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white relative overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#222', color: '#fff' } }} />
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 relative overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+      <Toaster position="top-center" toastOptions={{ style: { background: '#fff', color: '#333' } }} />
       
       {/* Background Decorative Gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#bd905b]/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#bd905b]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#f2687c]/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full h-full min-h-screen px-4 sm:px-8 lg:px-12 py-8 relative z-10 flex flex-col">
         
         {/* Header & Status Toggle */}
-        <div className="flex justify-between items-center pb-8 mb-8 border-b border-white/5">
+        <div className="flex justify-between items-center pb-8 mb-8 border-b border-slate-200">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-[#888] bg-clip-text text-transparent tracking-tight">
+            <h1 className="text-4xl font-bold text-slate-900 tracking-tight">
               Doctor Portal
             </h1>
-            <p className="text-[#bd905b] mt-2 font-medium tracking-wide">{user?.email}</p>
+            <p className="text-[#f2687c] mt-2 font-medium tracking-wide">{user?.email}</p>
           </div>
           
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 bg-[#111]/80 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/5 shadow-lg">
-              <span className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${isOnline ? 'text-green-500' : 'text-[#888]'}`}>
+            <div className="flex items-center gap-4 bg-white border border-slate-200 px-5 py-2.5 rounded-2xl shadow-sm">
+              <span className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${isOnline ? 'text-green-500' : 'text-slate-500'}`}>
                 {isOnline && (
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -151,7 +160,7 @@ export default function DoctorDashboard() {
               </span>
               <button 
                 onClick={toggleAvailability}
-                className={`w-14 h-7 rounded-full transition-all duration-300 relative shadow-inner ${isOnline ? 'bg-green-500' : 'bg-[#333]'}`}
+                className={`w-14 h-7 rounded-full transition-all duration-300 relative shadow-inner ${isOnline ? 'bg-green-500' : 'bg-slate-200'}`}
               >
                 <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform duration-300 shadow-md ${isOnline ? 'translate-x-8' : 'translate-x-1'}`}></div>
               </button>
@@ -159,9 +168,9 @@ export default function DoctorDashboard() {
             
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 backdrop-blur-md"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-300"
             >
-              <LogOut size={18} className="text-[#888]" />
+              <LogOut size={18} className="text-slate-500" />
             </button>
           </div>
         </div>
@@ -170,7 +179,7 @@ export default function DoctorDashboard() {
           
           {/* Left Column: Request Queue */}
           <div className="lg:col-span-4">
-            <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl relative overflow-hidden min-h-[500px]">
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm relative overflow-hidden min-h-[500px]">
               
               <div className="flex items-center justify-between mb-8 relative z-10">
                 <div className="flex items-center gap-3">
@@ -179,7 +188,7 @@ export default function DoctorDashboard() {
                   </div>
                   <h2 className="text-xl font-bold">Live Queue</h2>
                 </div>
-                <div className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                <div className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.3)]">
                   {requests.length} Waiting
                 </div>
               </div>
@@ -187,34 +196,34 @@ export default function DoctorDashboard() {
               {isOnline ? (
                 <div className="space-y-4 relative z-10">
                   {requests.filter(req => req.status === 'PENDING').length === 0 ? (
-                    <div className="text-center py-12 text-[#888]">
+                    <div className="text-center py-12 text-slate-400">
                       No pending requests at the moment.
                     </div>
                   ) : (
                     requests.filter(req => req.status === 'PENDING').map(req => (
-                      <div key={req.id} className="group bg-white/5 p-5 rounded-xl border border-white/5 hover:border-[#bd905b]/50 hover:bg-white/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden">
+                      <div key={req.id} className="group bg-slate-50 p-5 rounded-xl border border-slate-200 hover:border-[#f2687c]/50 hover:bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden">
                         
                         <div className="flex justify-between items-start mb-3">
-                          <p className="font-bold text-lg text-white group-hover:text-[#bd905b] transition-colors">{req.pet?.name || 'Pet'}</p>
-                          <span className="text-xs font-medium text-[#888] flex items-center gap-1"><Clock size={12}/> {new Date(req.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                          <p className="font-bold text-lg text-slate-900 group-hover:text-[#f2687c] transition-colors">{req.pet?.name || 'Pet'}</p>
+                          <span className="text-xs font-medium text-slate-400 flex items-center gap-1"><Clock size={12}/> {new Date(req.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 mb-3">
-                          <span className="text-xs font-bold text-black bg-[#bd905b] px-2 py-0.5 rounded-md">{req.pet?.species || 'Animal'}</span>
+                          <span className="text-xs font-bold text-white bg-[#f2687c] px-2 py-0.5 rounded-md">{req.pet?.species || 'Animal'}</span>
                         </div>
                         
-                        <p className="text-sm text-[#ccc] mb-5 line-clamp-2">Owner: {req.owner?.name}</p>
+                        <p className="text-sm text-slate-500 mb-5 line-clamp-2">Owner: {req.owner?.name}</p>
                         
                         <div className="flex gap-3">
                           <button 
                             onClick={() => handleAction(req.id, 'ACCEPT')}
-                            className="flex-1 py-2.5 bg-gradient-to-r from-[#bd905b] to-[#d4af37] text-black font-bold rounded-lg hover:shadow-[0_4px_15px_rgba(189,144,91,0.4)] transition-all flex items-center justify-center gap-2"
+                            className="flex-1 py-2.5 bg-[#f2687c] text-white font-bold rounded-lg hover:bg-[#d45668] transition-all flex items-center justify-center gap-2 shadow-sm"
                           >
                             <CheckCircle size={16} /> Accept
                           </button>
                           <button 
                             onClick={() => handleAction(req.id, 'REJECT')}
-                            className="px-3 py-2.5 bg-white/5 text-[#888] rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors flex items-center justify-center"
+                            className="px-3 py-2.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors flex items-center justify-center"
                           >
                             <XCircle size={18} />
                           </button>
@@ -224,8 +233,8 @@ export default function DoctorDashboard() {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-center text-[#888]">
-                  <Activity size={48} className="text-[#333] mb-4" />
+                <div className="flex flex-col items-center justify-center h-64 text-center text-slate-500">
+                  <Activity size={48} className="text-slate-300 mb-4" />
                   <p className="font-medium">You are offline.</p>
                   <p className="text-sm mt-1">Toggle your status to start receiving patient requests.</p>
                 </div>
@@ -237,21 +246,21 @@ export default function DoctorDashboard() {
           <div className="lg:col-span-8 space-y-8">
             
             {/* Confirmed Appointments Section */}
-            <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl">
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
               <h2 className="text-xl font-bold mb-6">Confirmed Consultations (Paid)</h2>
               <div className="space-y-4">
                 {requests.filter(req => req.status === 'CONFIRMED').length === 0 ? (
-                  <p className="text-[#888]">No active consultations ready for chat.</p>
+                  <p className="text-slate-400">No active consultations ready for chat.</p>
                 ) : (
                   requests.filter(req => req.status === 'CONFIRMED').map(req => (
-                    <div key={req.id} className="bg-white/5 border border-white/10 p-5 rounded-xl flex items-center justify-between">
+                    <div key={req.id} className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between hover:border-slate-300 transition-colors">
                       <div>
                         <h4 className="text-lg font-bold">{req.pet?.name || 'Pet'}</h4>
-                        <p className="text-sm text-[#888]">Owner: {req.owner?.name}</p>
+                        <p className="text-sm text-slate-500">Owner: {req.owner?.name}</p>
                       </div>
                       <button 
                         onClick={() => navigate(`/doctor/chat/${req.id}`)}
-                        className="bg-[#bd905b] text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#d4af37] transition-colors shadow-lg flex items-center gap-2"
+                        className="bg-[#f2687c] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#d45668] transition-colors shadow-sm flex items-center gap-2"
                       >
                         <MessageCircle size={16}/> Start Chat
                       </button>
@@ -262,21 +271,21 @@ export default function DoctorDashboard() {
             </div>
 
             {/* Awaiting Payment Section */}
-            <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-2xl">
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                Waiting For Payment <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">{requests.filter(req => req.status === 'ACCEPTED_PAYMENT_PENDING').length}</span>
+                Waiting For Payment <span className="text-xs bg-blue-50 text-blue-500 px-2 py-1 rounded-full">{requests.filter(req => req.status === 'ACCEPTED_PAYMENT_PENDING').length}</span>
               </h2>
               <div className="space-y-4">
                 {requests.filter(req => req.status === 'ACCEPTED_PAYMENT_PENDING').length === 0 ? (
-                  <p className="text-[#888]">No appointments waiting for payment.</p>
+                  <p className="text-slate-400">No appointments waiting for payment.</p>
                 ) : (
                   requests.filter(req => req.status === 'ACCEPTED_PAYMENT_PENDING').map(req => (
-                    <div key={req.id} className="bg-white/5 border border-white/10 p-5 rounded-xl flex items-center justify-between">
+                    <div key={req.id} className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between hover:border-slate-300 transition-colors">
                       <div>
                         <h4 className="text-lg font-bold">{req.pet?.name || 'Pet'}</h4>
-                        <p className="text-sm text-[#888]">Owner: {req.owner?.name}</p>
+                        <p className="text-sm text-slate-500">Owner: {req.owner?.name}</p>
                       </div>
-                      <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-3 py-1 rounded-full">
+                      <span className="text-xs font-bold text-blue-500 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                         Waiting for Payment
                       </span>
                     </div>
@@ -288,37 +297,37 @@ export default function DoctorDashboard() {
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              <div className="bg-gradient-to-br from-[#111111]/80 to-[#0a0a0a]/80 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-xl hover:-translate-y-1 transition-transform duration-300">
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-[#888] text-sm font-medium">Today's Sessions</p>
-                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Users size={18}/></div>
+                  <p className="text-slate-500 text-sm font-medium">Today's Sessions</p>
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-500"><Users size={18}/></div>
                 </div>
-                <p className="text-4xl font-bold tracking-tight">0</p>
+                <p className="text-4xl font-bold text-slate-900 tracking-tight">0</p>
               </div>
 
-              <div className="bg-gradient-to-br from-[#111111]/80 to-[#0a0a0a]/80 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-xl hover:-translate-y-1 transition-transform duration-300">
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-[#888] text-sm font-medium">Average Rating</p>
-                  <div className="p-2 bg-yellow-500/10 rounded-lg text-yellow-500"><Star size={18}/></div>
+                  <p className="text-slate-500 text-sm font-medium">Average Rating</p>
+                  <div className="p-2 bg-yellow-50 rounded-lg text-yellow-500"><Star size={18}/></div>
                 </div>
-                <p className="text-4xl font-bold text-white tracking-tight flex items-baseline gap-1">4.9 <span className="text-yellow-500 text-lg">⭐</span></p>
+                <p className="text-4xl font-bold text-slate-900 tracking-tight flex items-baseline gap-1">4.9 <span className="text-yellow-500 text-lg">⭐</span></p>
               </div>
 
-              <div className="bg-gradient-to-br from-[#111111]/80 to-[#0a0a0a]/80 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-xl hover:-translate-y-1 transition-transform duration-300 group">
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-[#888] text-sm font-medium">Earnings This Week</p>
-                  <div className="p-2 bg-[#bd905b]/10 rounded-lg text-[#bd905b] group-hover:bg-[#bd905b] group-hover:text-black transition-colors"><IndianRupee size={18}/></div>
+                  <p className="text-slate-500 text-sm font-medium">Earnings This Week</p>
+                  <div className="p-2 bg-[#f2687c]/10 rounded-lg text-[#f2687c] group-hover:bg-[#f2687c] group-hover:text-white transition-colors"><IndianRupee size={18}/></div>
                 </div>
-                <p className="text-4xl font-bold text-[#bd905b] tracking-tight">14,200</p>
+                <p className="text-4xl font-bold text-[#f2687c] tracking-tight">14,200</p>
               </div>
 
             </div>
 
             {/* Earnings Chart */}
-            <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-2xl">
+            <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-xl font-bold">Weekly Earnings Activity</h2>
-                <button className="text-sm font-medium text-[#bd905b] flex items-center gap-1 hover:text-[#d4af37] transition-colors">
+                <button className="text-sm font-medium text-[#f2687c] flex items-center gap-1 hover:text-[#d45668] transition-colors">
                   View Full Report <ChevronRight size={16}/>
                 </button>
               </div>
@@ -327,14 +336,14 @@ export default function DoctorDashboard() {
                   <BarChart data={earningsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <XAxis 
                       dataKey="name" 
-                      stroke="#666" 
+                      stroke="#94a3b8" 
                       fontSize={12} 
                       tickLine={false} 
                       axisLine={false} 
                       dy={10}
                     />
                     <YAxis 
-                      stroke="#666" 
+                      stroke="#94a3b8" 
                       fontSize={12} 
                       tickLine={false} 
                       axisLine={false} 
@@ -342,19 +351,19 @@ export default function DoctorDashboard() {
                       dx={-10}
                     />
                     <Tooltip 
-                      cursor={{fill: 'rgba(255,255,255,0.02)'}} 
+                      cursor={{fill: 'rgba(0,0,0,0.02)'}} 
                       contentStyle={{
-                        backgroundColor: '#1a1a1a', 
-                        border: '1px solid #333', 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e2e8f0', 
                         borderRadius: '12px',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                       }} 
-                      itemStyle={{ color: '#bd905b', fontWeight: 'bold' }}
+                      itemStyle={{ color: '#f2687c', fontWeight: 'bold' }}
                     />
                     <Bar dataKey="earnings" radius={[6, 6, 6, 6]}>
                       {
                         earningsData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={index === earningsData.length - 1 ? '#d4af37' : '#bd905b'} fillOpacity={index === earningsData.length - 1 ? 1 : 0.6} />
+                          <Cell key={`cell-${index}`} fill={index === earningsData.length - 1 ? '#d45668' : '#f2687c'} fillOpacity={index === earningsData.length - 1 ? 1 : 0.6} />
                         ))
                       }
                     </Bar>

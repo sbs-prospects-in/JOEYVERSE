@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, PawPrint, Heart, Sparkles, FileText } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/store/authStore';
 import toast, { Toaster } from 'react-hot-toast';
+import { User, Mail, Lock, PawPrint, Heart, Sparkles } from 'lucide-react';
 
 function BoneSVG({ className }) {
   return (
@@ -28,55 +28,11 @@ function FishSVG({ className }) {
 
 export default function Register() {
   const navigate = useNavigate();
-  const { signup, isLoading } = useAuthStore();
   const [role, setRole] = useState('petOwner');
-  
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [licenseNumber, setLicenseNumber] = useState('');
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-    if (role === 'doctor' && !licenseNumber) {
-      toast.error("License number is required for doctors");
-      return;
-    }
-
-    const { success, error, session } = await signup(email, password, role, {
-      name: name,
-      license_number: licenseNumber,
-    });
-
-    if (success) {
-      if (session === null) {
-        toast.success('Signup successful! Please check your email.');
-      } else {
-        toast.success('Account created successfully!');
-        if (role === 'doctor') {
-          navigate('/doctor/dashboard');
-        } else {
-          navigate('/pet-owner/dashboard');
-        }
-      }
-    } else {
-      console.error("SIGNUP ERROR:", error);
-      let errMsg = error?.message;
-      if (!errMsg || errMsg === '{}') {
-        errMsg = "Network error or invalid Supabase API Key.";
-      }
-      toast.error(errMsg);
-    }
-  };
-
+  const { signup, isLoading } = useAuthStore();
   return (
     <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#222', color: '#fff', borderRadius: '12px', border: '1px solid #333' } }} />
+      <Toaster position="top-right" />
       
       {/* Mesh Background Blobs for Visual Glow */}
       <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-rose-200/20 blur-3xl pointer-events-none z-0" />
@@ -159,28 +115,49 @@ export default function Register() {
 
         {/* Form */}
         <form 
-          onSubmit={handleSubmit}
+          onSubmit={async (e) => { 
+            e.preventDefault(); 
+            const name = e.target.registerName.value;
+            const email = e.target.registerEmail.value;
+            const password = e.target.registerPassword.value;
+            
+            const result = await signup(email, password, role, { name });
+            
+            if (result.success) {
+              if (role === 'doctor') {
+                navigate("/doctor/dashboard");
+              } else {
+                navigate("/pet-owner/dashboard");
+              }
+            } else {
+              toast.error(result.error?.message || "Registration failed");
+            }
+          }}
           className="flex flex-col gap-4"
         >
-          {/* Custom Segmented Control for Role */}
-          <div className="relative flex p-1 bg-white/20 backdrop-blur-md rounded-xl mb-1 border border-white/40">
-            <div 
-              className={`absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white/40 rounded-lg transition-transform duration-300 ease-out border border-white/50 shadow-sm ${role === 'doctor' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}
-            ></div>
-            
+          {/* Role Selector */}
+          <div className="flex bg-slate-100/80 p-1 rounded-xl mb-2">
             <button
               type="button"
-              className={`flex-1 py-2.5 text-xs font-bold transition-colors z-10 ${role === 'petOwner' ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
               onClick={() => setRole('petOwner')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                role === 'petOwner'
+                  ? 'bg-white text-[#f2687c] shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
             >
               Pet Owner
             </button>
             <button
               type="button"
-              className={`flex-1 py-2.5 text-xs font-bold transition-colors z-10 ${role === 'doctor' ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
               onClick={() => setRole('doctor')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                role === 'doctor'
+                  ? 'bg-white text-emerald-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
             >
-              Doctor
+              Veterinarian
             </button>
           </div>
           {/* Full Name input */}
@@ -193,8 +170,6 @@ export default function Register() {
               <input 
                 type="text" 
                 id="registerName" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
                 placeholder="Dr. Mark Olsen" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
@@ -212,8 +187,6 @@ export default function Register() {
               <input 
                 type="email" 
                 id="registerEmail" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 placeholder="mark@anitalk.com" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
@@ -231,8 +204,6 @@ export default function Register() {
               <input 
                 type="password" 
                 id="registerPassword" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Min. 8 characters" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 minLength="8"
@@ -251,8 +222,6 @@ export default function Register() {
               <input 
                 type="password" 
                 id="confirmPassword" 
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter password" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 minLength="8"
@@ -261,42 +230,12 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Conditional License Number input for Doctors */}
-          {role === 'doctor' && (
-            <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-              <label htmlFor="licenseNumber" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
-                License Number
-              </label>
-              <div className="relative">
-                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-                <input 
-                  type="text" 
-                  id="licenseNumber" 
-                  value={licenseNumber}
-                  onChange={(e) => setLicenseNumber(e.target.value)}
-                  placeholder="e.g. VET-12345" 
-                  className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
-                  required 
-                />
-              </div>
-            </div>
-          )}
-
           {/* Submit Button */}
           <button 
             type="submit" 
-            disabled={isLoading}
-            className="w-full bg-slate-900 hover:bg-[#f2687c] text-white font-extrabold text-xs py-4 px-6 rounded-xl transition-all duration-300 shadow-md uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] mt-3 disabled:opacity-50 flex justify-center items-center gap-2"
+            className="w-full bg-slate-900 hover:bg-[#f2687c] text-white font-extrabold text-xs py-4 px-6 rounded-xl transition-all duration-300 shadow-md uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] mt-3"
           >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </>
-            ) : "Register Account"}
+            Register Account
           </button>
 
           {/* Navigation link */}

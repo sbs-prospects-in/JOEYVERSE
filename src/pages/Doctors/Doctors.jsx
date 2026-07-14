@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../features/auth/api/supabase';
 import { Link } from 'react-router-dom';
 import { Star, Award, Sparkles, HeartPulse, Clock, DollarSign, PawPrint, Heart } from 'lucide-react';
 
@@ -25,84 +26,38 @@ function FishSVG({ className }) {
 }
 
 export default function Doctors() {
-  const doctors = [
-    { 
-      id: 'anjali-mehta', 
-      name: 'Dr. Anjali Mehta', 
-      specialty: 'Canine & Feline Medicine', 
-      specialtyKey: 'canine',
-      species: ['dog', 'cat'],
-      rating: 4.9,
-      experience: 10,
-      fee: 35,
-      bio: 'Specialist in companion animal diagnostics, preventative clinical therapy, and vaccine schedules.',
-      img: '/images/dr-anjali.png'
-    },
-    { 
-      id: 'vivek-patel', 
-      name: 'Dr. Vivek Patel', 
-      specialty: 'Avian & Exotic Animals', 
-      specialtyKey: 'exotics',
-      species: ['birds', 'reptiles'],
-      rating: 4.8,
-      experience: 8,
-      fee: 40,
-      bio: 'Experienced in avian medicine, exotic reptile diagnostics, and small mammal treatments.',
-      img: '/images/dr-marcus.png'
-    },
-    { 
-      id: 'sarah-jenkins', 
-      name: 'Dr. Sarah Jenkins', 
-      specialty: 'Feline Dermatology', 
-      specialtyKey: 'dermatology',
-      species: ['cat'],
-      rating: 4.9,
-      experience: 12,
-      fee: 45,
-      bio: 'Expert feline skin clinic head, treating dermatitis, allergy reactions, and chronic ear conditions.',
-      img: 'https://images.unsplash.com/photo-1594824813573-246434e33963?q=80&w=400'
-    },
-    { 
-      id: 'david-chen', 
-      name: 'Dr. David Chen', 
-      specialty: 'Equine & Canine Surgery', 
-      specialtyKey: 'surgery',
-      species: ['dog'],
-      rating: 5.0,
-      experience: 15,
-      fee: 55,
-      bio: 'Specialist in orthopedics, soft tissue surgical consulting, and post-op physical rehabilitation.',
-      img: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400'
-    },
-    { 
-      id: 'elena-rossi', 
-      name: 'Dr. Elena Rossi', 
-      specialty: 'Veterinary Cardiology', 
-      specialtyKey: 'cardiology',
-      species: ['dog', 'cat'],
-      rating: 4.7,
-      experience: 9,
-      fee: 45,
-      bio: 'Focused on cardiac health panels, blood pressure management, and chronic heart failure triage.',
-      img: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400'
-    },
-    { 
-      id: 'samuel-lee', 
-      name: 'Dr. Samuel Lee', 
-      specialty: 'Animal Nutritionist', 
-      specialtyKey: 'nutrition',
-      species: ['dog', 'cat'],
-      rating: 4.9,
-      experience: 11,
-      fee: 35,
-      bio: 'Custom diet formulator for metabolic disorders, allergy management plans, and weight loss.',
-      img: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400'
-    }
-  ];
-
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [specialty, setSpecialty] = useState('all');
   const [species, setSpecies] = useState('all');
   const [sort, setSort] = useState('rating');
+
+  useEffect(() => {
+    async function fetchDoctors() {
+      const { data, error } = await supabase
+        .from('doctor_profiles')
+        .select('*');
+      
+      if (data) {
+        // Map Supabase rows to the component's expected format
+        const formattedDoctors = data.map(doc => ({
+          id: doc.id,
+          name: doc.name,
+          specialty: doc.specialization,
+          specialtyKey: doc.specialization.toLowerCase().includes('feline') ? 'canine' : 'exotics', // simplified grouping
+          species: ['dog', 'cat'], // simplified
+          rating: doc.rating || 4.9,
+          experience: doc.experience_years || 5,
+          fee: doc.consultation_fee || 35,
+          bio: doc.about || '',
+          img: doc.email.includes('anjali') ? '/images/dr-anjali.png' : '/images/dr-marcus.png'
+        }));
+        setDoctors(formattedDoctors);
+      }
+      setLoading(false);
+    }
+    fetchDoctors();
+  }, []);
 
   const filteredDoctors = doctors
     .filter(doc => specialty === 'all' || doc.specialtyKey === specialty)
