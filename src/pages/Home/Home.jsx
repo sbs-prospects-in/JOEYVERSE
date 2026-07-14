@@ -96,7 +96,7 @@ export default function Home() {
         {/* ── Tagline ── */}
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: '700', color: '#dc2626', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#dc2626', flexShrink: 0 }} />
-          PetCare Connect
+          Joeyverse
         </div>
 
         {/* ── H1 Headline with pink underline SVG on "pet wellness" ── */}
@@ -348,7 +348,7 @@ export default function Home() {
             padding: '0.35rem 1rem',
             borderRadius: '9999px',
           }}>
-            Why PetCare Connect
+            Why Joeyverse
           </span>
 
           {/* Big playful heading */}

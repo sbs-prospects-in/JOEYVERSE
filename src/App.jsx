@@ -2,9 +2,15 @@ import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
+import { useAuthStore } from './features/auth/store/authStore';
 
 export default function App() {
   const location = useLocation();
+  const { initAuth } = useAuthStore();
+
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -14,7 +20,7 @@ export default function App() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       
       {/* Navbar Shared Component — style later */}
-      <Navbar />
+      {!location.pathname.startsWith('/doctor') && !location.pathname.startsWith('/pet-owner') && <Navbar />}
 
       {/* Main Content Slot — style later */}
       <main style={{ flexGrow: 1 }}>
@@ -22,7 +28,7 @@ export default function App() {
       </main>
 
       {/* Footer Shared Component — style later */}
-      <Footer />
+      {!location.pathname.startsWith('/doctor') && !location.pathname.startsWith('/pet-owner') && <Footer />}
 
     </div>
   );

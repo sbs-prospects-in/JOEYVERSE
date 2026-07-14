@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
+import { useAuthStore } from '../../features/auth/store/authStore';
 
 const NAV_LINKS = [
   { label: 'Home', href: '/', bgActive: 'bg-rose-100 text-rose-700 border-rose-200/50 shadow-sm rotate-[-1.5deg]', hoverStyle: 'hover:bg-rose-50 hover:text-rose-600' },
   { label: 'Doctors', href: '/doctors', bgActive: 'bg-sky-100 text-sky-700 border-sky-200/50 shadow-sm rotate-[1deg]', hoverStyle: 'hover:bg-sky-50 hover:text-sky-600' },
   { label: 'Services', href: '/services', bgActive: 'bg-yellow-100 text-yellow-800 border-yellow-250/50 shadow-sm rotate-[-1.2deg]', hoverStyle: 'hover:bg-yellow-50 hover:text-yellow-700' },
   { label: 'Success Stories', href: '/success-stories', bgActive: 'bg-purple-100 text-purple-700 border-purple-200/50 shadow-sm rotate-[1.5deg]', hoverStyle: 'hover:bg-purple-50 hover:text-purple-600' },
-  { label: 'Why Choose Us?', href: '/why-choose-us', bgActive: 'bg-emerald-100 text-emerald-700 border-emerald-250/50 shadow-sm rotate-[-1deg]', hoverStyle: 'hover:bg-emerald-50 hover:text-emerald-600' },
-  { label: 'Consult', href: '/consult', bgActive: 'bg-pink-100 text-pink-700 border-pink-200/50 shadow-sm rotate-[1.2deg]', hoverStyle: 'hover:bg-pink-50 hover:text-pink-600' },
+  { label: 'Why Choose Us?', href: '/why-choose-us', bgActive: 'bg-emerald-100 text-emerald-700 border-emerald-250/50 shadow-sm rotate-[-1deg]', hoverStyle: 'hover:bg-emerald-50 hover:text-emerald-600' }
 ];
 
 function PawSVG({ size, color, className }) {
@@ -25,6 +25,8 @@ function PawSVG({ size, color, className }) {
 
 export default function Navbar() {
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
+  const role = useAuthStore((state) => state.role);
   const [driftItems, setDriftItems] = useState([]);
   const [trailRuns, setTrailRuns] = useState([]);
 
@@ -174,12 +176,12 @@ export default function Navbar() {
         <Link 
           to="/" 
           className="text-slate-900 font-extrabold text-lg md:text-xl tracking-tight flex items-center gap-2 cursor-pointer relative z-10"
-          aria-label="PetCare Connect"
+          aria-label="Joeyverse"
         >
           <div className="w-8 h-8 rounded-full bg-[#f472b6] flex items-center justify-center text-black shrink-0">
-            <PawPrint className="w-4 h-4 fill-current" />
+            <PawPrint className="h-6 w-6 text-rose-500 group-hover:rotate-12 transition-transform duration-300" />
           </div>
-          <span>PetCare Connect</span>
+          <span>Joeyverse</span>
         </Link>
 
         {/* Navigation Links */}
@@ -204,12 +206,21 @@ export default function Navbar() {
 
         {/* Action Button */}
         <div className="flex items-center gap-4 relative z-10">
-          <Link
-            to="/sign-in"
-            className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
-          >
-            Sign In
-          </Link>
+          {user ? (
+            <Link
+              to={role === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard'}
+              className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              to="/sign-in"
+              className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
+            >
+              Sign In
+            </Link>
+          )}
         </div>
 
       </header>

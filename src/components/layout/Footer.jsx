@@ -196,7 +196,7 @@ export default function Footer() {
                 <PawPrint className="w-7 h-7 text-rose-500" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 leading-tight">
-                PetCare <span className="text-rose-600">Connect</span>
+                Joeyverse
               </h3>
             </div>
             <p className="text-[0.9rem] leading-relaxed text-slate-600">
@@ -265,7 +265,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3.5 text-sm text-slate-600">
                 <Mail className="w-5 h-5 text-rose-600 shrink-0" />
-                <span>hello@petcareconnect.com</span>
+                <span>hello@joeyverse.com</span>
               </li>
               <li className="flex items-center gap-3.5 text-sm text-slate-600">
                 <Phone className="w-5 h-5 text-rose-600 shrink-0" />
@@ -316,7 +316,7 @@ export default function Footer() {
         {/* BOTTOM BAR */}
         <div className="pt-8 border-t border-slate-900/10 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-xs text-slate-500">
-            © 2026 PetCare Connect. All rights reserved.
+            © 2026 Joeyverse. All rights reserved.
           </p>
           
           <div className="flex gap-2">

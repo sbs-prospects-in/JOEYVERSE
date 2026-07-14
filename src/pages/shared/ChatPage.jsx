@@ -6,103 +6,61 @@ import ChatRoom from '../../components/chat/ChatRoom';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function ChatPage() {
-  const { appointmentId } = useParams();
+  const { id } = useParams(); // consultation id
   const navigate = useNavigate();
-  const { user, userRole } = useAuthStore();
+  const { user, role: userRole } = useAuthStore();
   
-  const [appointment, setAppointment] = useState(null);
-  const [chat, setChat] = useState(null);
+  const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initChat = async () => {
-      // 1. Validate Appointment
-      const { data: appt, error: apptError } = await supabase
-        .from('appointments')
-        .select('*, doctor:doctor_profiles(name), owner:owner_profiles(name)')
-        .eq('id', appointmentId)
+      // 1. Fetch Consultation
+      const { data: consult, error: consultError } = await supabase
+        .from('consultations')
+        .select('*')
+        .eq('id', id)
         .single();
         
-      if (apptError || !appt) {
-        toast.error("Appointment not found");
-        navigate(-1);
-        return;
-      }
-
-      // Allow Doctor to enter if CONFIRMED and automatically upgrade to READY_FOR_CHAT
-      if (userRole === 'doctor' && appt.status === 'CONFIRMED') {
-        await supabase.from('appointments').update({ status: 'READY_FOR_CHAT' }).eq('id', appointmentId);
-        appt.status = 'READY_FOR_CHAT';
-      }
-
-      // Block Pet Owner if not yet ready
-      if (userRole === 'petOwner' && appt.status === 'CONFIRMED') {
-        toast.error(`Waiting for the doctor to start the consultation.`);
-        navigate(-1);
-        return;
-      }
-
-      // General check
-      if (appt.status !== 'READY_FOR_CHAT') {
-        toast.error(`Appointment is ${appt.status}. Chat is closed.`);
-        navigate(-1);
+      if (consultError || !consult) {
+        toast.error("Consultation not found");
+        navigate(userRole === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard');
         return;
       }
       
-      setAppointment(appt);
+      // 1b. Fetch doctor and owner profiles manually
+      const { data: docData } = await supabase.from('doctor_profiles').select('name').eq('id', consult.doctor_id).single();
+      const { data: ownerData } = await supabase.from('owner_profiles').select('name').eq('id', consult.owner_id).single();
+      
+      consult.doctor = docData || { name: 'Doctor' };
+      consult.owner = ownerData || { name: 'Pet Owner' };
 
-      // 2. Fetch or Create Chat Row
-      const { data: existingChat, error: chatError } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('appointment_id', appointmentId)
-        .single();
-
-      if (existingChat) {
-        setChat(existingChat);
-      } else {
-        // If chat doesn't exist, create it (usually the first person to open the page creates it)
-        const { data: newChat, error: createError } = await supabase
-          .from('chats')
-          .insert([{
-            appointment_id: appointmentId,
-            doctor_id: appt.doctor_id,
-            owner_id: appt.owner_id
-          }])
-          .select()
-          .single();
-          
-        if (createError) {
-          console.error(createError);
-          toast.error("Failed to initialize chat");
-        } else {
-          setChat(newChat);
-        }
-      }
+      // We no longer auto-kick out completed chats so they can view history
+      
+      setConsultation(consult);
       setLoading(false);
     };
 
     if (user?.id) {
       initChat();
     }
-  }, [appointmentId, user, navigate]);
+  }, [id, user, navigate]);
 
   const handleEndConsultation = async () => {
-    const confirmEnd = window.confirm("Are you sure you want to end this consultation? This will close the chat permanently.");
+    const confirmEnd = window.confirm("Are you sure you want to end this consultation? This will stop billing and close the chat.");
     if (!confirmEnd) return;
 
-    // Update appointment status to COMPLETED
-    await supabase.from('appointments').update({ status: 'COMPLETED' }).eq('id', appointmentId);
+    // Update consultation status to COMPLETED
+    const endedAt = new Date().toISOString();
+    await supabase.from('consultations').update({ status: 'COMPLETED', ended_at: endedAt }).eq('id', id);
     
+    setConsultation(prev => ({...prev, status: 'COMPLETED', ended_at: endedAt}));
     toast.success("Consultation completed!");
-    setTimeout(() => {
-      navigate('/doctor/dashboard');
-    }, 1500);
   };
 
-  if (loading) return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f2687c]"></div></div>;
+  if (loading) return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500"></div></div>;
 
-  const otherPersonName = userRole === 'doctor' ? appointment.owner.name : `Dr. ${appointment.doctor.name}`;
+  const otherPersonName = userRole === 'doctor' ? consultation.owner.name : `Dr. ${consultation.doctor.name}`;
   const backLink = userRole === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard';
 
   return (
@@ -116,24 +74,21 @@ export default function ChatPage() {
             <h1 className="text-3xl font-light">Consultation Room</h1>
           </div>
           
-          {userRole === 'doctor' && (
+          {consultation.status === 'ACTIVE' && (
             <button 
               onClick={handleEndConsultation}
-              className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-500 hover:text-white transition-colors"
+              className="bg-red-50 text-red-600 border border-red-200 px-6 py-2 rounded-xl text-sm font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm"
             >
               End Consultation
             </button>
           )}
         </div>
 
-        {chat && (
-          <ChatRoom 
-            appointmentId={appointmentId} 
-            chatId={chat.id} 
-            currentUserId={user.id} 
-            otherPersonName={otherPersonName}
-          />
-        )}
+        <ChatRoom 
+          consultation={consultation}
+          currentUserId={user.id} 
+          otherPersonName={otherPersonName}
+        />
       </div>
     </div>
   );

@@ -22,10 +22,10 @@ app.use(cors());
 
 // --- ROUTES ---
 
-// 1. Create Checkout Session
+// 1. Create Checkout Session for Scheduled Consultations
 app.post('/api/create-checkout', async (req, res) => {
   try {
-    const { appointmentId } = req.body;
+    const { consultationId } = req.body;
     
     // Create an authenticated Supabase client for this specific request
     const supabaseClient = createClient(
@@ -40,15 +40,15 @@ app.post('/api/create-checkout', async (req, res) => {
       }
     );
 
-    // Verify appointment exists
-    const { data: appointment, error } = await supabaseClient
-      .from('appointments')
+    // Verify consultation exists
+    const { data: consultation, error } = await supabaseClient
+      .from('consultations')
       .select('*, doctor:doctor_profiles(name)')
-      .eq('id', appointmentId)
+      .eq('id', consultationId)
       .single();
 
-    if (error || !appointment) {
-      return res.status(404).json({ error: 'Appointment not found' });
+    if (error || !consultation) {
+      return res.status(404).json({ error: 'Consultation not found' });
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -58,7 +58,7 @@ app.post('/api/create-checkout', async (req, res) => {
           price_data: {
             currency: 'inr',
             product_data: {
-              name: `Consultation with ${appointment.doctor.name}`,
+              name: `Scheduled Consultation with ${consultation.doctor.name}`,
               description: 'Pet Healthcare Consultation Fee'
             },
             unit_amount: 50000, // ₹500.00
@@ -69,7 +69,7 @@ app.post('/api/create-checkout', async (req, res) => {
       mode: 'payment',
       success_url: `${req.headers.origin || 'http://localhost:5173'}/pet-owner/dashboard?payment=success`,
       cancel_url: `${req.headers.origin || 'http://localhost:5173'}/pet-owner/dashboard?payment=cancelled`,
-      client_reference_id: appointmentId,
+      client_reference_id: consultationId,
     });
 
     res.json({ sessionId: session.id, url: session.url });
@@ -95,25 +95,96 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
 
   if (stripeEvent.type === 'checkout.session.completed') {
     const session = stripeEvent.data.object;
-    const appointmentId = session.client_reference_id;
+    const consultationId = session.client_reference_id;
 
-    if (appointmentId) {
+    if (consultationId) {
       // For webhooks, we must use the Service Role key to bypass RLS and update the db
       const supabaseWebhookClient = createClient(
         process.env.VITE_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
       );
       
-      // Update appointment status to CONFIRMED (this will fail due to RLS if anon key is used, but our frontend hack covers it)
+      // Update consultation status to SCHEDULED upon payment success
       await supabaseWebhookClient
-        .from('appointments')
-        .update({ status: 'CONFIRMED' })
-        .eq('id', appointmentId);
+        .from('consultations')
+        .update({ status: 'SCHEDULED' })
+        .eq('id', consultationId);
     }
   }
 
   res.json({ received: true });
 });
+
+// 3. Wallet Top-Up (Service Role required to bypass RLS for wallets)
+app.post('/api/wallet/topup', async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    if (!userId || !amount) return res.status(400).json({ error: 'Missing userId or amount' });
+
+    const supabaseServiceRoleClient = createClient(
+      process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+    );
+
+    // 1. Get current wallet
+    const { data: wallet } = await supabaseServiceRoleClient
+      .from('wallets')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    let walletId = wallet?.id;
+    let newBalance = amount;
+
+    if (wallet) {
+      newBalance += Number(wallet.balance || 0);
+      await supabaseServiceRoleClient
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('id', walletId);
+    } else {
+      const { data: newWallet } = await supabaseServiceRoleClient
+        .from('wallets')
+        .insert({ user_id: userId, balance: newBalance })
+        .select()
+        .single();
+      walletId = newWallet?.id;
+    }
+
+    if (walletId) {
+      await supabaseServiceRoleClient.from('wallet_transactions').insert({
+        wallet_id: walletId,
+        amount: amount,
+        transaction_type: 'TOPUP',
+        description: 'Mock Add Funds (API)'
+      });
+    }
+
+    res.json({ success: true, balance: newBalance });
+  } catch (error) {
+    console.error('Topup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- CRON JOBS ---
+// Server-side billing loop: deducts balance every minute for ACTIVE instant consultations
+const supabaseServiceRoleClient = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+);
+
+setInterval(async () => {
+  try {
+    const { error } = await supabaseServiceRoleClient.rpc('process_active_consultations_billing');
+    if (error) {
+      console.error('Billing cron error:', error.message);
+    }
+  } catch (err) {
+    console.error('Billing cron exception:', err.message);
+  }
+}, 10000);
+
 
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
