@@ -474,7 +474,7 @@ export default function WhyChooseUs() {
 
         <div className="mt-3">
           <Link 
-            to="/consult" 
+            to="/doctors" 
             className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-full font-bold text-xs uppercase tracking-wider inline-flex items-center justify-center gap-1.5 transition-all duration-300 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
           >
             Start Online Consult

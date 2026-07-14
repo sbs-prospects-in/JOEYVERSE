@@ -329,7 +329,7 @@ export default function RecoveryReport() {
               Experiencing a similar vet concern? Connect over chat or high-definition video slots with certified veterinarians instantly.
             </p>
             <Link 
-              to="/consult" 
+              to="/doctors" 
               className="w-full inline-flex items-center justify-center bg-white text-slate-900 hover:bg-slate-100 font-black py-3.5 px-4 rounded-xl shadow-md transition-colors text-center text-xs gap-1.5 relative z-10"
             >
               Start Online Consult <ArrowRight className="w-3.5 h-3.5 text-rose-500" />

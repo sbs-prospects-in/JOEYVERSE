@@ -365,7 +365,7 @@ export default function DoctorsPanel() {
                       <p style={{ fontSize: '0.75rem', color: doc.textLight, margin: 0, fontWeight: '600' }}>
                         {doc.specialty}
                       </p>
-                      <Link to="/consult" style={{
+                      <Link to="/doctors" style={{
                         marginTop: 'auto',
                         display: 'inline-block',
                         fontSize: '0.7rem', fontWeight: '700',

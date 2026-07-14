@@ -228,7 +228,7 @@ export default function DoctorProfile() {
             {/* CTAs */}
             <div className="relative z-10 flex flex-col gap-3">
               <Link 
-                to="/consult" 
+                to="/doctors" 
                 className="w-full inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-black py-4 px-6 rounded-2xl shadow-md transition-colors text-center text-sm gap-2"
               >
                 <Calendar className="w-4.5 h-4.5 text-[#A9DFBF]" /> Book Consultation

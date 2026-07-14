@@ -125,7 +125,7 @@ export default function Home() {
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
           {/* Primary pill button */}
           <Link
-            to="/consult"
+            to="/doctors"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -964,7 +964,7 @@ export default function Home() {
         {/* Central Action CTA button */}
         <div style={{ zIndex: 2, marginTop: '1rem' }}>
           <Link
-            to="/consult"
+            to="/doctors"
             style={{
               display: 'inline-flex',
               alignItems: 'center',

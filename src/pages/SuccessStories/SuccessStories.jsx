@@ -337,7 +337,7 @@ export default function SuccessStories() {
                     <FileText className="w-3.5 h-3.5 text-rose-500" /> Case Study
                   </Link>
                   <Link 
-                    to="/consult" 
+                    to="/doctors" 
                     className="bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs py-3 px-5 rounded-xl transition-all shadow-sm inline-flex items-center gap-1.5"
                   >
                     <MessageCircle className="w-3.5 h-3.5" /> Connect

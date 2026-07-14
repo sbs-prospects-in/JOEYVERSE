@@ -123,7 +123,7 @@ export default function Services() {
 
                   {/* Action Link */}
                   <Link 
-                    to="/consult" 
+                    to="/doctors" 
                     className="bg-[#f2687c] hover:bg-rose-600 text-white font-extrabold text-xs md:text-sm py-4 px-8 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all mt-4 inline-flex items-center gap-2"
                   >
                     Book Consultation Slot
@@ -166,7 +166,7 @@ export default function Services() {
               <div className="text-[#004b75] text-5xl font-black tracking-tight mb-1">{packages[0].price}</div>
               <div className="text-[#004b75]/60 text-[0.7rem] font-bold uppercase tracking-wider mb-6">{packages[0].duration}</div>
               <p className="text-[#004b75]/80 text-sm leading-relaxed mb-8 max-w-xs flex-1">{packages[0].desc}</p>
-              <Link to="/consult" className="w-full inline-flex items-center justify-center bg-white text-[#004b75] font-extrabold text-sm py-3.5 px-6 rounded-xl shadow-sm border border-[#004b75]/10 hover:bg-[#004b75] hover:text-white transition-colors mt-auto">
+              <Link to="/doctors" className="w-full inline-flex items-center justify-center bg-white text-[#004b75] font-extrabold text-sm py-3.5 px-6 rounded-xl shadow-sm border border-[#004b75]/10 hover:bg-[#004b75] hover:text-white transition-colors mt-auto">
                 Select Plan
               </Link>
             </div>
@@ -177,7 +177,7 @@ export default function Services() {
               <div className="text-[#004b75] text-5xl font-black tracking-tight mb-1">{packages[1].price}</div>
               <div className="text-[#004b75]/60 text-[0.7rem] font-bold uppercase tracking-wider mb-6">{packages[1].duration}</div>
               <p className="text-[#004b75]/80 text-sm leading-relaxed mb-8 max-w-xs flex-1">{packages[1].desc}</p>
-              <Link to="/consult" className="w-full inline-flex items-center justify-center bg-[#004b75] text-white font-extrabold text-sm py-3.5 px-6 rounded-xl shadow-md hover:bg-[#003858] transition-colors mt-auto">
+              <Link to="/doctors" className="w-full inline-flex items-center justify-center bg-[#004b75] text-white font-extrabold text-sm py-3.5 px-6 rounded-xl shadow-md hover:bg-[#003858] transition-colors mt-auto">
                 Select Plan
               </Link>
             </div>
@@ -188,7 +188,7 @@ export default function Services() {
               <div className="text-[#004b75] text-5xl font-black tracking-tight mb-1">{packages[2].price}</div>
               <div className="text-[#004b75]/60 text-[0.7rem] font-bold uppercase tracking-wider mb-6">{packages[2].duration}</div>
               <p className="text-[#004b75]/80 text-sm leading-relaxed mb-8 max-w-xs flex-1">{packages[2].desc}</p>
-              <Link to="/consult" className="w-full inline-flex items-center justify-center bg-white text-[#004b75] font-extrabold text-sm py-3.5 px-6 rounded-xl shadow-sm border border-[#004b75]/10 hover:bg-[#004b75] hover:text-white transition-colors mt-auto">
+              <Link to="/doctors" className="w-full inline-flex items-center justify-center bg-white text-[#004b75] font-extrabold text-sm py-3.5 px-6 rounded-xl shadow-sm border border-[#004b75]/10 hover:bg-[#004b75] hover:text-white transition-colors mt-auto">
                 Select Plan
               </Link>
             </div>
