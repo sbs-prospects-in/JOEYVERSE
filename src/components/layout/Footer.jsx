@@ -204,13 +204,13 @@ export default function Footer() {
             </p>
             <div className="flex flex-col gap-3 mt-1 max-w-[260px]">
               <Link 
-                to="/consult" 
+                to="/doctors" 
                 className="bg-slate-900 text-white hover:bg-slate-800 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm text-sm"
               >
                 <Calendar className="w-4.5 h-4.5" /> Book Appointment
               </Link>
               <Link 
-                to="/consult" 
+                to="/doctors" 
                 className="bg-transparent border border-slate-900/20 hover:bg-slate-900/5 text-slate-800 py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all text-sm"
               >
                 <Phone className="w-4.5 h-4.5 text-slate-700" /> Contact Now
