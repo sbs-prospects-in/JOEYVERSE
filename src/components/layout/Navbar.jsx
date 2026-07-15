@@ -28,6 +28,38 @@ export default function Navbar() {
   const { user, role, isLoading, logout } = useAuthStore();
   const [driftItems, setDriftItems] = useState([]);
   const [trailRuns, setTrailRuns] = useState([]);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+      // Update UI notify the user they can install the PWA
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+    }
+    // We've used the prompt, and can't use it again, throw it away
+    setDeferredPrompt(null);
+  };
 
   useEffect(() => {
     const colors = ['#FFC857', '#6EC9A0', '#FF9D80', '#A9DFBF', '#93C5FD'];
@@ -229,6 +261,14 @@ export default function Navbar() {
                 Sign In
               </Link>
             )
+          )}
+          {isInstallable && (
+            <button
+              onClick={handleInstallClick}
+              className="hidden md:flex px-4 py-2 text-xs uppercase tracking-wider font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-full transition-all border border-indigo-200"
+            >
+              Install App
+            </button>
           )}
         </div>
 
