@@ -144,8 +144,7 @@ export default function Doctors() {
     
     try {
       const { data: walletData } = await supabase.from('wallets').select('balance').eq('user_id', user.id).maybeSingle();
-      const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
-      const currentBalance = (walletData ? parseFloat(walletData.balance) : 0) + localOffset;
+      const currentBalance = walletData ? parseFloat(walletData.balance) : 0;
       
       if (currentBalance < doc.fee) {
         toast.error(`Insufficient wallet balance. You need at least ₹${doc.fee} for a 1-minute consultation. Please add funds from your dashboard.`);

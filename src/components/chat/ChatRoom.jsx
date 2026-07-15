@@ -261,38 +261,25 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             const intervals = Math.ceil(Math.max(seconds, 0) / 60);
             const fee = intervals * consultation.per_minute_rate;
 
-            const { data: wallet } = await supabase
-              .from('wallets')
-              .select('id, balance')
-              .eq('user_id', user.id)
-              .single();
-
-            if (wallet) {
-              const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
-              const currentBalance = parseFloat(wallet.balance) + localOffset;
-              const newDbBalance = Math.max(0, parseFloat(wallet.balance) - fee);
-              
-              let rlsBlocked = false;
-
-              const { data: updateData } = await supabase
-                .from('wallets')
-                .update({ balance: newDbBalance })
-                .eq('id', wallet.id)
-                .select();
-                
-              if (!updateData || updateData.length === 0) {
-                rlsBlocked = true;
-              }
-
-              if (rlsBlocked) {
-                localStorage.setItem(`wallet_offset_${user.id}`, localOffset - fee);
-              } else {
-                await supabase.from('wallet_transactions').insert({
-                  wallet_id: wallet.id,
-                  amount: -fee,
-                  transaction_type: 'CONSULTATION_DEDUCTION',
-                  description: desc
+            if (fee > 0) {
+              try {
+                const response = await fetch('/api/wallet/deduct', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    userId: user.id,
+                    amount: fee,
+                    description: desc
+                  })
                 });
+                
+                if (!response.ok) {
+                  console.error("Failed to deduct fee on server");
+                }
+              } catch (err) {
+                console.error("Deduct fee error:", err);
               }
             }
           }
@@ -324,9 +311,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     let walletChannel;
     if (userRole === 'petOwner') {
       const fetchWallet = async () => {
-        const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${currentUserId}`) || '0');
         const { data } = await supabase.from('wallets').select('balance').eq('user_id', currentUserId).single();
-        if (data) setWalletBalance(data.balance + localOffset);
+        if (data) setWalletBalance(data.balance);
       };
       fetchWallet();
       
@@ -338,9 +324,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
           table: 'wallets',
           filter: `user_id=eq.${currentUserId}`
         }, (payload) => {
-           const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${currentUserId}`) || '0');
-           setWalletBalance(payload.new.balance + localOffset);
-           if ((payload.new.balance + localOffset) < consultation.per_minute_rate) {
+           setWalletBalance(payload.new.balance);
+           if (payload.new.balance < consultation.per_minute_rate) {
              toast.error("Low balance warning!");
            }
         })

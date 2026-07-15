@@ -47,21 +47,23 @@ export default function PetOwnerDashboard() {
 
   const fetchWallet = async () => {
     if (user?.id) {
-      const { data, error } = await supabase
-        .from('wallets')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
-      
-      if (data) {
-        setWallet({ ...data, balance: parseFloat(data.balance) + localOffset });
-      } else {
-        setWallet({ balance: localOffset });
-      }
-      if (error) {
-        console.error("Error fetching wallet:", error);
+      try {
+        const { data, error } = await supabase
+          .from('wallets')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (data) {
+          setWallet(data);
+        } else {
+          setWallet({ balance: 0 });
+        }
+        if (error) {
+          console.error("Error fetching wallet:", error);
+        }
+      } catch (err) {
+        console.error("Error fetching wallet:", err);
       }
     }
   };
@@ -139,8 +141,7 @@ export default function PetOwnerDashboard() {
           filter: `user_id=eq.${user.id}`
         }, (payload) => {
           if (payload.new) {
-             const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
-             setWallet({ ...payload.new, balance: parseFloat(payload.new.balance) + localOffset });
+             setWallet(payload.new);
           }
         })
         .subscribe();
@@ -225,54 +226,26 @@ export default function PetOwnerDashboard() {
     const amount = parseFloat(amountStr);
     
     try {
-      const { data: currentWallet } = await supabase
-        .from('wallets')
-        .select('id, balance')
-        .eq('user_id', user.id)
-        .maybeSingle();
-        
-      const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
-      const actualDbBalance = currentWallet ? parseFloat(currentWallet.balance) : 0;
-      
-      const newDisplayBalance = actualDbBalance + localOffset + amount;
-      const newDbBalance = actualDbBalance + amount;
-      
-      let walletId = currentWallet?.id;
-      let rlsBlocked = false;
-      
-      if (currentWallet) {
-        const { data: updateData, error: updateError } = await supabase
-          .from('wallets')
-          .update({ balance: newDbBalance })
-          .eq('user_id', user.id)
-          .select();
-        
-        if (updateError || !updateData || updateData.length === 0) rlsBlocked = true;
-        else walletId = updateData[0].id;
-      } else {
-        const { data: newWallet, error: insertError } = await supabase
-          .from('wallets')
-          .insert({ user_id: user.id, balance: newDbBalance })
-          .select()
-          .maybeSingle();
-        
-        if (insertError || !newWallet) {
-          rlsBlocked = true;
-        } else {
-          walletId = newWallet.id;
-        }
+      // Call the secure backend endpoint to bypass RLS
+      const response = await fetch('/api/wallet/topup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          amount: amount
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update wallet balance on server');
       }
 
-      if (rlsBlocked) {
-        const newOffset = localOffset + amount;
-        localStorage.setItem(`wallet_offset_${user.id}`, newOffset.toString());
-      }
-      
-      setWallet(prev => ({ ...prev, balance: newDisplayBalance }));
       toast.success(`Successfully added ₹${amount} to your wallet!`);
       setIsStripeModalOpen(false);
       
-      // Attempt to refresh
+      // Refresh the wallet balance from the server
       fetchWallet();
     } catch (err) {
       console.error(err);
@@ -287,7 +260,6 @@ export default function PetOwnerDashboard() {
   const handleResetWallet = async () => {
     if (!user?.id) return;
     try {
-      localStorage.removeItem(`wallet_offset_${user.id}`);
       const { data: currentWallet } = await supabase.from('wallets').select('id').eq('user_id', user.id).maybeSingle();
       if (currentWallet) {
         await supabase.from('wallets').update({ balance: 0 }).eq('user_id', user.id);

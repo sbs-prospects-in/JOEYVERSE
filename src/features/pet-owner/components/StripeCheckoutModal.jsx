@@ -129,7 +129,7 @@ export default function StripeCheckoutModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-y-auto max-h-[95vh] animate-fade-in-up">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">

@@ -143,54 +143,53 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
   res.json({ received: true });
 });
 
-// 3. Wallet Top-Up (Service Role required to bypass RLS for wallets)
+// 3. Wallet Top-Up (uses RPC function with SECURITY DEFINER to bypass RLS)
 app.post('/api/wallet/topup', async (req, res) => {
   try {
     const { userId, amount } = req.body;
     if (!userId || !amount) return res.status(400).json({ error: 'Missing userId or amount' });
 
-    const supabaseServiceRoleClient = createClient(
+    const supabaseClient = createClient(
       process.env.VITE_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
     );
 
-    // 1. Get current wallet
-    const { data: wallet } = await supabaseServiceRoleClient
-      .from('wallets')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    const { data: newBalance, error } = await supabaseClient.rpc('wallet_topup', {
+      p_user_id: userId,
+      p_amount: amount
+    });
 
-    let walletId = wallet?.id;
-    let newBalance = amount;
-
-    if (wallet) {
-      newBalance += Number(wallet.balance || 0);
-      await supabaseServiceRoleClient
-        .from('wallets')
-        .update({ balance: newBalance })
-        .eq('id', walletId);
-    } else {
-      const { data: newWallet } = await supabaseServiceRoleClient
-        .from('wallets')
-        .insert({ user_id: userId, balance: newBalance })
-        .select()
-        .single();
-      walletId = newWallet?.id;
-    }
-
-    if (walletId) {
-      await supabaseServiceRoleClient.from('wallet_transactions').insert({
-        wallet_id: walletId,
-        amount: amount,
-        transaction_type: 'TOPUP',
-        description: 'Mock Add Funds (API)'
-      });
-    }
+    if (error) throw error;
 
     res.json({ success: true, balance: newBalance });
   } catch (error) {
     console.error('Topup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. Wallet Deduct (uses RPC function with SECURITY DEFINER to bypass RLS)
+app.post('/api/wallet/deduct', async (req, res) => {
+  try {
+    const { userId, amount, description } = req.body;
+    if (!userId || !amount) return res.status(400).json({ error: 'Missing userId or amount' });
+
+    const supabaseClient = createClient(
+      process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+    );
+
+    const { data: newBalance, error } = await supabaseClient.rpc('wallet_deduct', {
+      p_user_id: userId,
+      p_amount: amount,
+      p_description: description || 'Consultation fee'
+    });
+
+    if (error) throw error;
+
+    res.json({ success: true, balance: newBalance });
+  } catch (error) {
+    console.error('Deduct error:', error);
     res.status(500).json({ error: error.message });
   }
 });
