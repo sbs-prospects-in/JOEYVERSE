@@ -17,6 +17,15 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const [endTime, setEndTime] = useState(consultation.ended_at);
   const { role: userRole, user } = useAuthStore();
   
+  useEffect(() => {
+    if (consultation.status !== consultationStatus) {
+      setConsultationStatus(consultation.status);
+    }
+    if (consultation.ended_at !== endTime) {
+      setEndTime(consultation.ended_at);
+    }
+  }, [consultation.status, consultation.ended_at]);
+
   // WebRTC Call State
   const [callStatus, setCallStatus] = useState('idle'); // 'idle' | 'calling' | 'receiving' | 'active'
   const [isMuted, setIsMuted] = useState(false);
@@ -315,8 +324,9 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     let walletChannel;
     if (userRole === 'petOwner') {
       const fetchWallet = async () => {
+        const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${currentUserId}`) || '0');
         const { data } = await supabase.from('wallets').select('balance').eq('user_id', currentUserId).single();
-        if (data) setWalletBalance(data.balance);
+        if (data) setWalletBalance(data.balance + localOffset);
       };
       fetchWallet();
       
@@ -328,16 +338,19 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
           table: 'wallets',
           filter: `user_id=eq.${currentUserId}`
         }, (payload) => {
-           setWalletBalance(payload.new.balance);
-           if (payload.new.balance < consultation.per_minute_rate) {
+           const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${currentUserId}`) || '0');
+           setWalletBalance(payload.new.balance + localOffset);
+           if ((payload.new.balance + localOffset) < consultation.per_minute_rate) {
              toast.error("Low balance warning!");
            }
         })
         .subscribe();
     }
 
-    const messageChannel = supabase
-      .channel(`public:messages:consultation_id=eq.${consultation.id}`)
+    const roomChannel = supabase
+      .channel(`room_consultation_${consultation.id}`, {
+        config: { broadcast: { self: false } }
+      })
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -347,47 +360,34 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         if (payload.new.sender_id !== currentUserId) {
           setMessages(prev => [...prev, payload.new]);
           scrollToBottom();
-          // If we receive a message from them, they stopped typing
           setIsTyping(false);
+          setIsRecordingIndicator(false);
         }
       })
-      .subscribe();
-      
-      const consultationChannel = supabase
-        .channel(`public:consultations:id=eq.${consultation.id}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'consultations',
-          filter: `id=eq.${consultation.id}`
-        }, (payload) => {
-           if (payload.new.status === 'COMPLETED' && consultationStatus !== 'COMPLETED') {
-             setConsultationStatus('COMPLETED');
-             setEndTime(payload.new.ended_at || new Date().toISOString());
-             // Ensure call is hung up when consultation ends completely
-             endCallLocal();
-           }
-        })
-        .subscribe();
-        
-      // Typing indicator broadcast channel
-      const tChannel = supabase.channel(`typing:consultation_${consultation.id}`, {
-        config: { broadcast: { self: false } }
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'consultations',
+        filter: `id=eq.${consultation.id}`
+      }, (payload) => {
+         if (payload.new.status === 'COMPLETED') {
+           setConsultationStatus('COMPLETED');
+           setEndTime(payload.new.ended_at || new Date().toISOString());
+           endCallLocal();
+         }
+      })
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        setIsTyping(payload.payload.isTyping && !payload.payload.isRecording);
+        setIsRecordingIndicator(!!payload.payload.isRecording);
+        if (payload.payload.isTyping || payload.payload.isRecording) {
+          scrollToBottom();
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          typingChannelRef.current = roomChannel;
+        }
       });
-
-      tChannel
-        .on('broadcast', { event: 'typing' }, (payload) => {
-          setIsTyping(payload.payload.isTyping && !payload.payload.isRecording);
-          setIsRecordingIndicator(!!payload.payload.isRecording);
-          if (payload.payload.isTyping || payload.payload.isRecording) {
-            scrollToBottom();
-          }
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            typingChannelRef.current = tChannel;
-          }
-        });
         
       const fallbackMsgInterval = setInterval(async () => {
         const { data } = await supabase
@@ -421,10 +421,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       }, 5000);
 
       return () => {
-        supabase.removeChannel(messageChannel);
-        supabase.removeChannel(consultationChannel);
-        supabase.removeChannel(tChannel);
         if (walletChannel) supabase.removeChannel(walletChannel);
+        supabase.removeChannel(roomChannel);
         clearInterval(fallbackMsgInterval);
         clearInterval(fallbackConsInterval);
       };

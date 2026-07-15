@@ -215,7 +215,7 @@ export default function DoctorDashboard() {
     
     fetchDashboardData();
 
-    // Listen to consultations
+    // Listen to consultations (Realtime)
     const queueChannel = supabase
       .channel('public:consultations_doctor')
       .on('postgres_changes', {
@@ -231,8 +231,14 @@ export default function DoctorDashboard() {
       })
       .subscribe();
 
+    // Fallback polling every 5 seconds just in case Realtime isn't fully configured on the table
+    const pollInterval = setInterval(() => {
+      fetchDashboardData();
+    }, 5000);
+
     return () => {
       supabase.removeChannel(queueChannel);
+      clearInterval(pollInterval);
     };
   }, [user]);
 
