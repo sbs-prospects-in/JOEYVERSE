@@ -12,6 +12,8 @@ import SignIn from "./pages/SignIn/SignIn";
 import NotFound from "./pages/NotFound/NotFound";
 import DoctorDashboardPage from "./features/doctor/pages/DashboardPage";
 import PetOwnerDashboardPage from "./features/pet-owner/pages/DashboardPage";
+import AdminDashboardPage from "./features/admin/pages/DashboardPage";
+import AdminSetup from "./pages/AdminSetup/AdminSetup";
 import ChatPage from "./pages/shared/ChatPage";
 import { useAuthStore } from "./features/auth/store/authStore";
 
@@ -28,6 +30,7 @@ function ProtectedRoute({ children, allowedRole }) {
   }
 
   if (allowedRole && role !== allowedRole) {
+    if (role === 'admin') return <Navigate to="/admin/dashboard" replace />;
     if (role === 'petOwner') return <Navigate to="/pet-owner/dashboard" replace />;
     if (role === 'doctor') return <Navigate to="/doctor/dashboard" replace />;
     return <Navigate to="/" replace />;
@@ -81,6 +84,15 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         )
       },
+      {
+        path: "/admin/dashboard",
+        element: (
+          <ProtectedRoute allowedRole="admin">
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      { path: "/admin-setup", element: <AdminSetup /> },
       { path: "*", element: <NotFound /> },
     ],
   },

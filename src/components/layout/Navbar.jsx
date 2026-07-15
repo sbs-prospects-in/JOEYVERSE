@@ -208,7 +208,7 @@ export default function Navbar() {
         <div className="flex items-center gap-4 relative z-10">
           {user ? (
             <Link
-              to={role === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard'}
+              to={role === 'admin' ? '/admin/dashboard' : role === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard'}
               className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
             >
               Dashboard
