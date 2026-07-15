@@ -6,7 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from 'recharts';
 import { 
   LogOut, Activity, Users, Star, IndianRupee, 
-  Clock, CheckCircle, XCircle, ChevronRight, Bell, MessageCircle,
+  Clock, CheckCircle, XCircle, ChevronRight, ChevronDown, Bell, MessageCircle,
   TrendingUp, Calendar, Zap, ShieldCheck, X, PhoneCall
 } from 'lucide-react';
 
@@ -20,7 +20,10 @@ export default function DoctorDashboard() {
   const [waitlist, setWaitlist] = useState([]);
   const [history, setHistory] = useState([]);
   const [todaysSessions, setTodaysSessions] = useState(0);
-  const [weeklyEarnings, setWeeklyEarnings] = useState(0);
+  const [earningsFilter, setEarningsFilter] = useState('Weekly');
+  const [earningsSummary, setEarningsSummary] = useState({ Today: 0, Weekly: 0, Monthly: 0, Total: 0 });
+  const [averageRating, setAverageRating] = useState("0.0");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const handleLogout = async () => {
@@ -94,42 +97,109 @@ export default function DoctorDashboard() {
       .order('created_at', { ascending: true });
     if (waitlistData) setWaitlist(await enrichWithOwnerNames(waitlistData));
 
-    // 5. Fetch History (Completed)
+    // 5. Fetch History
     const { data: historyData } = await supabase
       .from('consultations')
-      .select('id, status, created_at, owner_id, started_at, ended_at, per_minute_rate')
+      .select('id, status, created_at, owner_id, started_at, ended_at, per_minute_rate, rating, feedback')
       .eq('doctor_id', user.id)
-      .eq('status', 'COMPLETED')
-      .order('ended_at', { ascending: false });
+      .in('status', ['COMPLETED', 'REJECTED', 'CANCELLED'])
+      .order('created_at', { ascending: false });
       
     if (historyData) {
-      setHistory(await enrichWithOwnerNames(historyData.slice(0, 5)));
+      let finalHistory = await enrichWithOwnerNames(historyData.slice(0, 5));
       
+      // MOCK DATA: if there is no real history, show mock history so the user can see the UI
+      if (finalHistory.length === 0) {
+        const mockNow = new Date();
+        finalHistory = [
+          {
+            id: 'mock-1',
+            status: 'COMPLETED',
+            created_at: new Date(mockNow.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+            started_at: new Date(mockNow.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+            ended_at: new Date(mockNow.getTime() - 1.5 * 60 * 60 * 1000).toISOString(),
+            per_minute_rate: 15,
+            rating: 5,
+            feedback: "Great consultation! Very helpful.",
+            owner: { name: "Rahul Kumar" }
+          },
+          {
+            id: 'mock-2',
+            status: 'COMPLETED',
+            created_at: new Date(mockNow.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+            started_at: new Date(mockNow.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+            ended_at: new Date(mockNow.getTime() - 23.8 * 60 * 60 * 1000).toISOString(),
+            per_minute_rate: 15,
+            rating: 4,
+            feedback: "Good advice.",
+            owner: { name: "Priya Sharma" }
+          },
+          {
+            id: 'mock-3',
+            status: 'COMPLETED',
+            created_at: new Date(mockNow.getTime() - 48 * 60 * 60 * 1000).toISOString(),
+            started_at: new Date(mockNow.getTime() - 48 * 60 * 60 * 1000).toISOString(),
+            ended_at: new Date(mockNow.getTime() - 47.5 * 60 * 60 * 1000).toISOString(),
+            per_minute_rate: 15,
+            rating: 5,
+            feedback: "Amazing vet, solved my issue quickly.",
+            owner: { name: "Amit Patel" }
+          }
+        ];
+        
+        // Populate dummy active/waitlist for UI demonstration if empty
+        if (activeConsultations.length === 0) {
+          setActiveConsultations([{
+            id: 'mock-active', status: 'ACTIVE', owner: { name: "Ravi Verma" }
+          }]);
+        }
+      }
+      
+      setHistory(finalHistory);
+      
+      const dataToProcess = historyData.length > 0 ? historyData : finalHistory;
       // Calculate stats
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
       const oneWeekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+      const oneMonthAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
       
       let sessionsToday = 0;
-      let earningsWeek = 0;
+      let eToday = 0, eWeek = 0, eMonth = 0, eTotal = 0;
+      let totalRating = 0;
+      let ratingCount = 0;
       
-      historyData.forEach(c => {
-        const endedTime = new Date(c.ended_at).getTime();
-        const startedTime = new Date(c.started_at || c.created_at).getTime();
-        
-        if (endedTime >= today) {
-          sessionsToday++;
-        }
-        
-        if (endedTime >= oneWeekAgo) {
+      dataToProcess.forEach(c => {
+        if (c.status === 'COMPLETED' && c.started_at && c.ended_at) {
+          const endedTime = new Date(c.ended_at).getTime();
+          const startedTime = new Date(c.started_at).getTime();
+          
           const seconds = Math.floor((endedTime - startedTime) / 1000);
           const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-          earningsWeek += intervals * c.per_minute_rate;
+          const cost = intervals * c.per_minute_rate;
+
+          eTotal += cost;
+          if (endedTime >= today) {
+            sessionsToday++;
+            eToday += cost;
+          }
+          if (endedTime >= oneWeekAgo) {
+            eWeek += cost;
+          }
+          if (endedTime >= oneMonthAgo) {
+            eMonth += cost;
+          }
+        }
+        
+        if (c.rating) {
+          totalRating += c.rating;
+          ratingCount++;
         }
       });
       
       setTodaysSessions(sessionsToday);
-      setWeeklyEarnings(earningsWeek);
+      setEarningsSummary({ Today: eToday, Weekly: eWeek, Monthly: eMonth, Total: eTotal });
+      setAverageRating(ratingCount > 0 ? (totalRating / ratingCount).toFixed(1) : "0.0");
     }
 
     setLoading(false);
@@ -301,9 +371,9 @@ export default function DoctorDashboard() {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         
         {/* Metric Cards Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           {/* Sessions Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-blue-200 transition-colors">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-blue-200 hover-float opacity-0-init animate-fade-in-up delay-100">
             <div>
               <p className="text-sm font-semibold text-slate-500 mb-1">Today's Sessions</p>
               <h3 className="text-3xl font-black text-slate-900">{todaysSessions}</h3>
@@ -313,24 +383,43 @@ export default function DoctorDashboard() {
             </div>
           </div>
 
-          {/* Rating Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-amber-200 transition-colors">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 mb-1">Average Rating</p>
-              <h3 className="text-3xl font-black text-slate-900 flex items-baseline gap-1">
-                4.9 <span className="text-sm font-semibold text-slate-400">/5.0</span>
-              </h3>
-            </div>
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
-              <Star size={24} className="fill-current" />
-            </div>
-          </div>
-
           {/* Earnings Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-emerald-200 transition-colors">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between group hover:border-emerald-200 hover-float opacity-0-init animate-fade-in-up delay-300">
             <div>
-              <p className="text-sm font-semibold text-slate-500 mb-1">Weekly Earnings</p>
-              <h3 className="text-3xl font-black text-slate-900">₹{weeklyEarnings.toLocaleString()}</h3>
+              <div className="relative">
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                  className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-emerald-600 transition-colors focus:outline-none bg-slate-50/50 hover:bg-emerald-50 px-3 py-1.5 rounded-lg"
+                >
+                  {earningsFilter}'s Earnings 
+                  <ChevronDown size={14} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-emerald-500' : ''}`} />
+                </button>
+                
+                {/* Custom Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in-up origin-top-left">
+                    {['Today', 'Weekly', 'Monthly', 'Total'].map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          setEarningsFilter(option);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors flex items-center justify-between ${
+                          earningsFilter === option 
+                            ? 'bg-emerald-50 text-emerald-700' 
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        {option}'s Earnings
+                        {earningsFilter === option && <CheckCircle size={14} className="text-emerald-500" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <h3 className="text-3xl font-black text-slate-900">₹{earningsSummary[earningsFilter].toLocaleString()}</h3>
             </div>
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
               <IndianRupee size={24} />
@@ -345,9 +434,9 @@ export default function DoctorDashboard() {
           <div className="lg:col-span-5 space-y-6">
             
             {/* Incoming Calls Panel */}
-            <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
+            <div className={`rounded-2xl border transition-all duration-300 overflow-hidden opacity-0-init animate-fade-in-up delay-400 ${
               isOnline && requests.length > 0 
-                ? 'bg-rose-500 border-rose-600 shadow-xl shadow-rose-500/20 text-white' 
+                ? 'bg-rose-500 border-rose-600 shadow-xl shadow-rose-500/20 text-white hover-float' 
                 : 'bg-white border-slate-200 shadow-sm'
             }`}>
               <div className={`px-6 py-5 border-b flex justify-between items-center ${
@@ -417,7 +506,7 @@ export default function DoctorDashboard() {
 
             {/* Waitlist Panel */}
             {isOnline && (
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden opacity-0-init animate-fade-in-up delay-400 hover-float">
                 <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
                   <h3 className="font-bold text-slate-800 flex items-center gap-2">
                     <Users size={18} className="text-amber-500" /> Waitlist
@@ -465,7 +554,7 @@ export default function DoctorDashboard() {
           </div>
 
           {/* Right Column (Active & Charts) */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-6 opacity-0-init animate-fade-in-up delay-600">
             
             {/* Active Consultations */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
@@ -601,20 +690,27 @@ export default function DoctorDashboard() {
                       <th className="px-6 py-4">Date & Time</th>
                       <th className="px-6 py-4">Duration</th>
                       <th className="px-6 py-4">Earnings</th>
+                      <th className="px-6 py-4">Rating & Feedback</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {history.map(session => {
-                      const start = new Date(session.started_at || session.created_at).getTime();
-                      const end = new Date(session.ended_at).getTime();
-                      let seconds = Math.floor((end - start) / 1000);
-                      if (seconds < 0) seconds = 0;
-                      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-                      const s = (seconds % 60).toString().padStart(2, '0');
-                      const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-                      const earnings = intervals * session.per_minute_rate;
+                      let earnings = 0;
+                      let m = '00', s = '00';
+                      if (session.status === 'COMPLETED' && session.started_at && session.ended_at) {
+                        const start = new Date(session.started_at).getTime();
+                        const end = new Date(session.ended_at).getTime();
+                        let seconds = Math.floor((end - start) / 1000);
+                        if (seconds < 0) seconds = 0;
+                        m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                        s = (seconds % 60).toString().padStart(2, '0');
+                        const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+                        earnings = intervals * session.per_minute_rate;
+                      }
+                      
+                      const dateToUse = session.ended_at || session.created_at;
                       
                       return (
                         <tr key={session.id} className="hover:bg-slate-50 transition-colors">
@@ -624,25 +720,46 @@ export default function DoctorDashboard() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-semibold text-slate-700">
-                              {new Date(session.ended_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {new Date(dateToUse).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
                             <div className="text-xs text-slate-500 mt-0.5">
-                              {new Date(session.ended_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              {new Date(dateToUse).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm font-semibold text-slate-600">
                             <div className="flex items-center gap-1.5">
                               <Clock size={14} className="text-slate-400" />
-                              {m}:{s}
+                              {session.status === 'COMPLETED' ? `${m}:${s}` : '--:--'}
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm font-black text-emerald-600">
-                            ₹{earnings}
+                            {session.status === 'COMPLETED' ? `₹${earnings}` : '₹0'}
                           </td>
                           <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
-                              <CheckCircle size={10} className="text-slate-400"/>
-                              Completed
+                            {session.rating ? (
+                              <div>
+                                <div className="flex items-center gap-1 text-amber-500">
+                                  <Star size={14} fill="currentColor" />
+                                  <span className="text-sm font-bold text-slate-700">{session.rating}.0</span>
+                                </div>
+                                {session.feedback && (
+                                  <div className="text-xs text-slate-500 mt-1 line-clamp-1 italic max-w-[150px]">"{session.feedback}"</div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">--</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              session.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' :
+                              session.status === 'REJECTED' ? 'bg-red-50 text-red-600' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
+                              {session.status === 'COMPLETED' && <CheckCircle size={10} />}
+                              {session.status === 'REJECTED' && <XCircle size={10} />}
+                              {session.status === 'CANCELLED' && <X size={10} />}
+                              {session.status}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -663,6 +780,8 @@ export default function DoctorDashboard() {
             )}
           </div>
         </div>
+
+
 
       </div>
     </div>

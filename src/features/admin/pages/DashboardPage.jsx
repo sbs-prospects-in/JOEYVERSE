@@ -165,7 +165,7 @@ export default function AdminDashboardPage() {
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
               <div>
                 <h1 className="text-3xl font-black text-slate-900">Platform Overview</h1>
-                <p className="text-slate-500 font-medium mt-1">Here is what is happening on Anitalk today.</p>
+                <p className="text-slate-500 font-medium mt-1">Here is what is happening on Joeyverse today.</p>
               </div>
 
               {/* Stats Grid */}

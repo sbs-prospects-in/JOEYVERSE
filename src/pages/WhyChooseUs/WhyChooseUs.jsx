@@ -348,7 +348,7 @@ export default function WhyChooseUs() {
           </div>
           
           <p className="text-slate-500 text-sm md:text-base leading-relaxed pl-1 max-w-xl">
-            Anitalk was created by pet parents and veterinary specialists who realized that emergency clinical guidance should be available instantly, without travel panic.
+            Joeyverse was created by pet parents and veterinary specialists who realized that emergency clinical guidance should be available instantly, without travel panic.
           </p>
 
           {/* 2x2 Feature Cards Grid */}

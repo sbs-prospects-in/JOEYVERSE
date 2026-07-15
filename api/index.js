@@ -22,6 +22,34 @@ app.use(cors());
 
 // --- ROUTES ---
 
+// 0. Create Payment Intent for Wallet Recharge
+app.post('/api/create-payment-intent', async (req, res) => {
+  try {
+    const { amount, currency = 'inr' } = req.body;
+
+    if (!amount) {
+      return res.status(400).json({ error: 'Amount is required' });
+    }
+
+    // Create a PaymentIntent with the order amount and currency
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount * 100, // Stripe expects amounts in the smallest currency unit
+      currency: currency,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      description: 'Anitalk Wallet Recharge',
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (error) {
+    console.error("Stripe Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 1. Create Checkout Session for Scheduled Consultations
 app.post('/api/create-checkout', async (req, res) => {
   try {

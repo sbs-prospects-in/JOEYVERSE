@@ -28,7 +28,6 @@ function FishSVG({ className }) {
 
 export default function SignIn() {
   const navigate = useNavigate();
-  const [role, setRole] = useState('petOwner');
   const { login, isLoading } = useAuthStore();
   return (
     <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -121,7 +120,9 @@ export default function SignIn() {
             const password = e.target.loginPassword.value;
             const result = await login(email, password);
             if (result.success) {
-              if (result.role === 'doctor' || role === 'doctor') {
+              if (result.role === 'admin') {
+                navigate("/admin/dashboard");
+              } else if (result.role === 'doctor') {
                 navigate("/doctor/dashboard");
               } else {
                 navigate("/pet-owner/dashboard");
@@ -132,31 +133,7 @@ export default function SignIn() {
           }}
           className="flex flex-col gap-5"
         >
-          {/* Role Selector */}
-          <div className="flex bg-slate-100/80 p-1 rounded-xl mb-2">
-            <button
-              type="button"
-              onClick={() => setRole('petOwner')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                role === 'petOwner'
-                  ? 'bg-white text-[#f2687c] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Pet Owner
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('doctor')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                role === 'doctor'
-                  ? 'bg-white text-emerald-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Veterinarian
-            </button>
-          </div>
+
           {/* Email input */}
           <div className="flex flex-col gap-2">
             <label htmlFor="loginEmail" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
@@ -167,7 +144,7 @@ export default function SignIn() {
               <input 
                 type="email" 
                 id="loginEmail" 
-                placeholder="doctor.mark@anitalk.com" 
+                placeholder="doctor.mark@joeyverse.com" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3.5 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
               />

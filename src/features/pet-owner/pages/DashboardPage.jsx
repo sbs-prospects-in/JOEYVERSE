@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../auth/api/supabase';
 import toast, { Toaster } from 'react-hot-toast';
+import StripeCheckoutModal from '../components/StripeCheckoutModal';
 
 export default function PetOwnerDashboard() {
   const { user, logout } = useAuthStore();
@@ -22,6 +23,7 @@ export default function PetOwnerDashboard() {
   const [myPets, setMyPets] = useState([]);
   const [wallet, setWallet] = useState({ balance: 0 });
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
+  const [isStripeModalOpen, setIsStripeModalOpen] = useState(false);
   const [selectedPet, setSelectedPet] = useState(null);
   
   const [newPet, setNewPet] = useState({ 
@@ -49,12 +51,16 @@ export default function PetOwnerDashboard() {
         .from('wallets')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+      
+      const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
       
       if (data) {
-        const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
         setWallet({ ...data, balance: parseFloat(data.balance) + localOffset });
-      } else if (error) {
+      } else {
+        setWallet({ balance: localOffset });
+      }
+      if (error) {
         console.error("Error fetching wallet:", error);
       }
     }
@@ -132,7 +138,10 @@ export default function PetOwnerDashboard() {
           table: 'wallets',
           filter: `user_id=eq.${user.id}`
         }, (payload) => {
-          if (payload.new) setWallet(payload.new);
+          if (payload.new) {
+             const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
+             setWallet({ ...payload.new, balance: parseFloat(payload.new.balance) + localOffset });
+          }
         })
         .subscribe();
         
@@ -209,40 +218,44 @@ export default function PetOwnerDashboard() {
     }
   };
 
-  const handleTopUp = async () => {
+  const handlePaymentSuccess = async (amountStr) => {
     if (!user?.id) return;
+    
+    // Ensure amount is a number
+    const amount = parseFloat(amountStr);
     
     try {
       const { data: currentWallet } = await supabase
         .from('wallets')
         .select('id, balance')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
       const localOffset = parseFloat(localStorage.getItem(`wallet_offset_${user.id}`) || '0');
       const actualDbBalance = currentWallet ? parseFloat(currentWallet.balance) : 0;
-      const displayBalance = actualDbBalance + localOffset;
-      const newDisplayBalance = displayBalance + 500.0;
-      const newDbBalance = actualDbBalance + 500.0;
+      
+      const newDisplayBalance = actualDbBalance + localOffset + amount;
+      const newDbBalance = actualDbBalance + amount;
       
       let walletId = currentWallet?.id;
       let rlsBlocked = false;
       
       if (currentWallet) {
-        const { data: updateData } = await supabase
+        const { data: updateData, error: updateError } = await supabase
           .from('wallets')
           .update({ balance: newDbBalance })
           .eq('user_id', user.id)
           .select();
         
-        if (!updateData || updateData.length === 0) rlsBlocked = true;
+        if (updateError || !updateData || updateData.length === 0) rlsBlocked = true;
+        else walletId = updateData[0].id;
       } else {
         const { data: newWallet, error: insertError } = await supabase
           .from('wallets')
           .insert({ user_id: user.id, balance: newDbBalance })
           .select()
-          .single();
-          
+          .maybeSingle();
+        
         if (insertError || !newWallet) {
           rlsBlocked = true;
         } else {
@@ -251,22 +264,39 @@ export default function PetOwnerDashboard() {
       }
 
       if (rlsBlocked) {
-        localStorage.setItem(`wallet_offset_${user.id}`, localOffset + 500.0);
-      } else if (walletId) {
-        await supabase.from('wallet_transactions').insert({
-          wallet_id: walletId,
-          amount: 500.0,
-          transaction_type: 'TOPUP',
-          description: 'Recharge Wallet'
-        });
+        const newOffset = localOffset + amount;
+        localStorage.setItem(`wallet_offset_${user.id}`, newOffset.toString());
       }
       
-      toast.success(rlsBlocked ? "₹500 added to wallet! (Local Mode)" : "₹500 added to wallet!");
       setWallet(prev => ({ ...prev, balance: newDisplayBalance }));
+      toast.success(`Successfully added ₹${amount} to your wallet!`);
+      setIsStripeModalOpen(false);
+      
+      // Attempt to refresh
       fetchWallet();
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Failed to add funds.");
+      toast.error("An error occurred while updating the wallet.");
+    }
+  };
+
+  const handleTopUp = () => {
+    setIsStripeModalOpen(true);
+  };
+
+  const handleResetWallet = async () => {
+    if (!user?.id) return;
+    try {
+      localStorage.removeItem(`wallet_offset_${user.id}`);
+      const { data: currentWallet } = await supabase.from('wallets').select('id').eq('user_id', user.id).maybeSingle();
+      if (currentWallet) {
+        await supabase.from('wallets').update({ balance: 0 }).eq('user_id', user.id);
+      }
+      setWallet({ balance: 0 });
+      toast.success("Wallet reset to ₹0");
+      fetchWallet();
+    } catch (err) {
+      toast.error("Failed to reset wallet");
     }
   };
 
@@ -284,7 +314,7 @@ export default function PetOwnerDashboard() {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
                 <PawPrint size={22} className="text-white" />
               </div>
-              <span className="text-xl font-black text-slate-800 tracking-tight">Anitalk</span>
+              <span className="text-xl font-black text-slate-800 tracking-tight">Joeyverse</span>
             </div>
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
@@ -313,6 +343,7 @@ export default function PetOwnerDashboard() {
             <p className="text-slate-500 mt-1 font-medium">Manage your pets, wallet, and consultations.</p>
           </div>
           <div className="flex items-center gap-3">
+
             <button 
               onClick={() => navigate('/doctors')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-sm transition-all flex items-center gap-2"
@@ -346,12 +377,20 @@ export default function PetOwnerDashboard() {
                 <span className="text-slate-400 font-medium text-2xl">₹</span>
                 {Number(wallet.balance).toFixed(2)}
               </div>
-              <button 
-                onClick={handleTopUp}
-                className="mt-6 w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                <Plus size={16} /> Recharge Wallet
-              </button>
+              <div className="flex gap-2 mt-6">
+                <button 
+                  onClick={handleResetWallet}
+                  className="w-1/3 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center text-sm"
+                >
+                  Reset
+                </button>
+                <button 
+                  onClick={handleTopUp}
+                  className="w-2/3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus size={16} /> Recharge Wallet
+                </button>
+              </div>
             </div>
           </div>
 
@@ -439,10 +478,34 @@ export default function PetOwnerDashboard() {
                     <div className="flex items-center sm:justify-end gap-6 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0">
                       
                       <div className="hidden md:block text-right">
-                        <div className="text-sm font-bold text-emerald-600">₹{cons.per_minute_rate}/min</div>
-                        <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1 justify-end">
-                          <Clock size={12}/> {new Date(cons.created_at).toLocaleDateString()}
-                        </div>
+                        {cons.status === 'COMPLETED' && cons.started_at && cons.ended_at ? (
+                          (() => {
+                            const start = new Date(cons.started_at).getTime();
+                            const end = new Date(cons.ended_at).getTime();
+                            let seconds = Math.floor((end - start) / 1000);
+                            if (seconds < 0) seconds = 0;
+                            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                            const s = (seconds % 60).toString().padStart(2, '0');
+                            const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+                            const cost = intervals * cons.per_minute_rate;
+                            
+                            return (
+                              <>
+                                <div className="text-sm font-black text-emerald-600">Paid: ₹{cost}</div>
+                                <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1 justify-end">
+                                  <Clock size={12}/> {m}:{s} mins
+                                </div>
+                              </>
+                            );
+                          })()
+                        ) : (
+                          <>
+                            <div className="text-sm font-bold text-emerald-600">₹{cons.per_minute_rate}/min</div>
+                            <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1 justify-end">
+                              <Calendar size={12}/> {new Date(cons.created_at).toLocaleDateString()}
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between w-full sm:w-auto gap-3">
@@ -672,6 +735,12 @@ export default function PetOwnerDashboard() {
         </div>
       )}
       
+      {/* Stripe Modal */}
+      <StripeCheckoutModal 
+        isOpen={isStripeModalOpen}
+        onClose={() => setIsStripeModalOpen(false)}
+        onSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 }

@@ -9,7 +9,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
-  
+  const [isRecordingIndicator, setIsRecordingIndicator] = useState(false);
   // Billing state
   const [activeSeconds, setActiveSeconds] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -28,6 +28,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingIntervalRef = useRef(null);
+  const isCancelledRef = useRef(false);
 
   const typingChannelRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -376,8 +377,9 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
 
       tChannel
         .on('broadcast', { event: 'typing' }, (payload) => {
-          setIsTyping(payload.payload.isTyping);
-          if (payload.payload.isTyping) {
+          setIsTyping(payload.payload.isTyping && !payload.payload.isRecording);
+          setIsRecordingIndicator(!!payload.payload.isRecording);
+          if (payload.payload.isTyping || payload.payload.isRecording) {
             scrollToBottom();
           }
         })
@@ -526,8 +528,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         // Safely stop the microphone tracks after we finish recording
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
 
-        if (audioChunksRef.current.length > 0) {
-          const audioType = audioChunksRef.current[0].type || 'audio/webm';
+        if (!isCancelledRef.current && audioChunksRef.current.length > 0) {
+          const audioType = mediaRecorder.mimeType || 'audio/webm';
           const audioBlob = new Blob(audioChunksRef.current, { type: audioType });
           const reader = new FileReader();
           reader.readAsDataURL(audioBlob);
@@ -538,8 +540,17 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         }
       };
 
-      // Use a timeslice to ensure data flushes reliably
-      mediaRecorder.start(200);
+      if (typingChannelRef.current) {
+        typingChannelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { isTyping: true, isRecording: true }
+        });
+      }
+
+      // Start recording without timeslice for more reliable cross-browser Blob generation
+      isCancelledRef.current = false;
+      mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
       
@@ -555,18 +566,38 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch (e) {}
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       clearInterval(recordingIntervalRef.current);
+      
+      if (typingChannelRef.current) {
+        typingChannelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { isTyping: false, isRecording: false }
+        });
+      }
     }
   };
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      isCancelledRef.current = true;
       audioChunksRef.current = []; // Clear chunks so onstop ignores it
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       clearInterval(recordingIntervalRef.current);
+      
+      if (typingChannelRef.current) {
+        typingChannelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { isTyping: false, isRecording: false }
+        });
+      }
     }
   };
 
@@ -612,78 +643,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       {/* Hidden Audio element for WebRTC incoming stream */}
       <audio ref={remoteAudioRef} autoPlay />
 
-      {/* Voice Call Floating UI Overlay */}
-      {callStatus !== 'idle' && (
-        <div className="absolute top-20 left-0 right-0 z-10 flex justify-center pointer-events-none animate-in slide-in-from-top-4">
-          <div className="bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-slate-700/50 flex items-center gap-4 pointer-events-auto">
-            
-            {callStatus === 'calling' && (
-              <>
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center animate-pulse">
-                    <Phone size={14} className="text-slate-300" />
-                  </div>
-                  <div className="text-sm">
-                    <p className="font-bold">Calling...</p>
-                    <p className="text-xs text-slate-400">Waiting for answer</p>
-                  </div>
-                </div>
-                <button onClick={hangUp} className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors">
-                  <PhoneOff size={14} />
-                </button>
-              </>
-            )}
-
-            {callStatus === 'receiving' && (
-              <>
-                <div className="flex items-center gap-3 text-white mr-4">
-                  <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
-                      <PhoneCall size={14} className="text-white animate-pulse" />
-                    </div>
-                    <div className="absolute inset-0 rounded-full border border-emerald-400 animate-ping" />
-                  </div>
-                  <div className="text-sm">
-                    <p className="font-bold">Incoming Call</p>
-                    <p className="text-xs text-slate-400">from {otherPersonName}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={rejectCall} className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors">
-                    <PhoneOff size={14} />
-                  </button>
-                  <button onClick={acceptCall} className="w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 flex items-center justify-center transition-colors shadow-lg shadow-emerald-500/20">
-                    <Phone size={14} className="fill-current" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {callStatus === 'active' && (
-              <>
-                <div className="flex items-center gap-3 text-white mr-4">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <Mic size={14} className="animate-pulse" />
-                  </div>
-                  <div className="text-sm">
-                    <p className="font-bold text-emerald-400">Voice Call Active</p>
-                    <p className="text-xs text-slate-400">Connected</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={toggleMute} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isMuted ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
-                    {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
-                  </button>
-                  <button onClick={hangUp} className="w-8 h-8 rounded-full bg-rose-500 text-white hover:bg-rose-600 flex items-center justify-center transition-colors shadow-lg shadow-rose-500/20">
-                    <PhoneOff size={14} />
-                  </button>
-                </div>
-              </>
-            )}
-
-          </div>
-        </div>
-      )}
+      {/* Voice Call Floating UI Overlay - REMOVED FOR NOW */}
 
       {/* Clean Modern Header */}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
@@ -707,16 +667,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         </div>
         
         <div className="flex items-center gap-4">
-          {/* WebRTC Start Call Button */}
-          {consultationStatus === 'ACTIVE' && callStatus === 'idle' && (
-            <button 
-              onClick={startCall}
-              title="Start Voice Call"
-              className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors shadow-sm"
-            >
-              <Phone size={16} />
-            </button>
-          )}
+          {/* WebRTC Start Call Button - REMOVED FOR NOW */}
 
           {userRole === 'petOwner' && (
             <div className="hidden sm:flex items-center gap-4 text-sm border-l border-slate-100 pl-4">
@@ -769,7 +720,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                   <div 
                     className={`px-4 py-2.5 shadow-sm text-sm ${
                       isMe 
-                        ? 'bg-blue-600 text-white' 
+                        ? isAudioMessage ? 'bg-slate-100 p-2 border border-slate-200' : 'bg-slate-800 text-white' 
                         : 'bg-white border border-slate-200 text-slate-800'
                     } ${
                       isMe 
@@ -782,7 +733,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                     ) : (
                       <p className="leading-relaxed">{msg.message_text}</p>
                     )}
-                    <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-white/80' : 'text-slate-400'}`}>
+                    <div className={`text-[10px] mt-1 text-right ${isMe ? (isAudioMessage ? 'text-slate-500' : 'text-white/80') : 'text-slate-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
@@ -793,16 +744,25 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         )}
         
         {/* Typing Indicator */}
-        {isTyping && (
+        {(isTyping || isRecordingIndicator) && (
           <div className="flex justify-start animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-end gap-2 max-w-[85%] md:max-w-[70%]">
               <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center shrink-0 mb-1">
                 <span className="text-slate-600 font-bold text-[10px]">{otherPersonName.charAt(0)}</span>
               </div>
-              <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5 h-10">
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-2 h-10">
+                {isRecordingIndicator ? (
+                  <div className="flex items-center gap-1.5">
+                    <Mic size={14} className="text-red-500 animate-pulse" />
+                    <span className="text-xs text-slate-500 font-medium">Recording audio...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

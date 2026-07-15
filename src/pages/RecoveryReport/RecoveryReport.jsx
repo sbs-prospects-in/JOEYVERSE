@@ -27,7 +27,7 @@ export default function RecoveryReport() {
       ],
       timeline: [
         { time: '12:05 AM', title: 'Foreign Object Ingestion', desc: 'Max swallowed the plastic bottle cap during unsupervised play.' },
-        { time: '12:12 AM', title: 'Virtual Triage Initiated', desc: 'Owner connected via Anitalk secure portal. Clinic panel assigned Dr. Anjali Mehta within 45 seconds.' },
+        { time: '12:12 AM', title: 'Virtual Triage Initiated', desc: 'Owner connected via Joeyverse secure portal. Clinic panel assigned Dr. Anjali Mehta within 45 seconds.' },
         { time: '12:18 AM', title: 'Physical Evaluation via Video', desc: 'Dr. Mehta assessed airway clearance, gum color, and abdominal swelling over HD video stream.' },
         { time: '12:25 AM', title: 'Safe Inducement & Monitoring Plan', desc: 'Guided owner through hydration steps and feeding small amounts of bread to buffer the stomach liner, avoiding costly night surgeries.' },
         { time: '08:00 AM', title: 'Successful Passage & Follow-up', desc: 'Object passed naturally. Follow-up diagnostic scan confirmed zero gastrointestinal tears.' }

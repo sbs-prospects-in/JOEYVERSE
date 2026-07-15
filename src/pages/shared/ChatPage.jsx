@@ -4,7 +4,50 @@ import { supabase } from '../../features/auth/api/supabase';
 import { useAuthStore } from '../../features/auth/store/authStore';
 import ChatRoom from '../../components/chat/ChatRoom';
 import toast, { Toaster } from 'react-hot-toast';
-import { ArrowLeft, ShieldCheck, Phone } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Star } from 'lucide-react';
+
+const RatingModal = ({ onSubmit, onClose }) => {
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95">
+        <h3 className="text-2xl font-black text-slate-900 mb-2">Rate your consultation</h3>
+        <p className="text-slate-500 mb-6">Please let us know how your experience was. Your feedback helps us improve.</p>
+        
+        <div className="flex items-center gap-2 mb-6 justify-center">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button key={star} onClick={() => setRating(star)} className="focus:outline-none transition-transform hover:scale-110 active:scale-95">
+              <Star size={36} className={`${rating >= star ? 'fill-amber-400 text-amber-400' : 'text-slate-200'} transition-colors`} />
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-bold text-slate-700 mb-2">Doubts or suggestions? (Optional)</label>
+          <textarea 
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="Tell us what you loved or what could be better..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#f2687c] focus:border-transparent resize-none h-24"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">Skip</button>
+          <button 
+            onClick={() => onSubmit(rating, feedback)} 
+            disabled={rating === 0} 
+            className="flex-1 py-3 bg-[#f2687c] text-white font-bold rounded-xl hover:bg-[#e05669] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ChatPage() {
   const { id } = useParams(); // consultation id
@@ -13,6 +56,7 @@ export default function ChatPage() {
   
   const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showRating, setShowRating] = useState(false);
 
   useEffect(() => {
     const initChat = async () => {
@@ -43,7 +87,35 @@ export default function ChatPage() {
     if (user?.id) {
       initChat();
     }
-  }, [id, user, navigate]);
+
+    // Listen for consultation updates (like doctor ending it)
+    const channel = supabase
+      .channel(`chat_page_consultation_${id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'consultations',
+        filter: `id=eq.${id}`
+      }, (payload) => {
+        if (payload.new.status === 'COMPLETED') {
+          setConsultation(prev => {
+             // Only show rating if the chat transitioned from ACTIVE to COMPLETED while on this page
+             if (prev && prev.status === 'ACTIVE') {
+                 if (userRole === 'petOwner' && !payload.new.rated) {
+                     setShowRating(true);
+                 }
+                 return {...prev, status: 'COMPLETED'};
+             }
+             return prev;
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, user, navigate, userRole]);
 
   const handleEndConsultation = async () => {
     const confirmEnd = window.confirm("Are you sure you want to end this consultation? This will stop billing and close the chat.");
@@ -55,6 +127,19 @@ export default function ChatPage() {
     
     setConsultation(prev => ({...prev, status: 'COMPLETED', ended_at: endedAt}));
     toast.success("Consultation completed!");
+    if (userRole === 'petOwner') setShowRating(true);
+  };
+
+  const handleRatingSubmit = async (rating, feedback) => {
+    try {
+      // In a real app, you'd ensure the 'rating' and 'feedback' columns exist in Supabase
+      await supabase.from('consultations').update({ rating, feedback, rated: true }).eq('id', id);
+    } catch (err) {
+      console.error(err);
+    }
+    setShowRating(false);
+    toast.success("Thank you for your feedback!");
+    navigate('/pet-owner/dashboard');
   };
 
   if (loading) return (
@@ -97,7 +182,7 @@ export default function ChatPage() {
               onClick={handleEndConsultation}
               className="mt-4 md:mt-0 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-200 hover:border-red-500 px-6 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2"
             >
-              <Phone size={16} className="rotate-[135deg]" /> End Call
+              End Consult
             </button>
           )}
         </div>
@@ -111,6 +196,16 @@ export default function ChatPage() {
           />
         </div>
       </div>
+      
+      {showRating && (
+        <RatingModal 
+          onSubmit={handleRatingSubmit} 
+          onClose={() => {
+            setShowRating(false);
+            navigate('/pet-owner/dashboard');
+          }} 
+        />
+      )}
     </div>
   );
 }

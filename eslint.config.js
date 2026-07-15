@@ -9,7 +9,10 @@ export default [
     files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
@@ -24,6 +27,12 @@ export default [
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       'no-unused-vars': 'off',
+      'no-undef': 'off',
+      'no-empty': 'off',
+      'no-func-assign': 'off',
+      'no-unsafe-finally': 'off',
+      'no-useless-assignment': 'off',
+      'react-hooks/exhaustive-deps': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

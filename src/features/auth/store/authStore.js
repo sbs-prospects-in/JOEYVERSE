@@ -70,17 +70,23 @@ export const useAuthStore = create((set) => ({
         set({ error: error.message, isLoading: false });
         return { success: false, error };
       }
-      set({ user: data.user, role: data.user.user_metadata?.role, isLoading: false });
+      const role = data.user.user_metadata?.role;
+      
+      if (role === 'doctor') {
+        await supabase.from('doctor_profiles').update({ status: 'ONLINE' }).eq('id', data.user.id);
+      }
+
+      set({ user: data.user, role, isLoading: false });
       
       // Track login
       useAuthStore.getState().trackActivity(
         'Existing User', 
         email, 
-        data.user.user_metadata?.role, 
+        role, 
         data.user.user_metadata?.name
       );
       
-      return { success: true, role: data.user.user_metadata?.role };
+      return { success: true, role };
     } catch (err) {
       set({ error: err.message, isLoading: false });
       return { success: false, error: err };
@@ -143,6 +149,10 @@ export const useAuthStore = create((set) => ({
 
   // Logout
   logout: async () => {
+    const state = useAuthStore.getState();
+    if (state.role === 'doctor' && state.user?.id) {
+      await supabase.from('doctor_profiles').update({ status: 'OFFLINE' }).eq('id', state.user.id);
+    }
     await supabase.auth.signOut();
     set({ user: null, role: null });
   },

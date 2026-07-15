@@ -25,8 +25,7 @@ function PawSVG({ size, color, className }) {
 
 export default function Navbar() {
   const location = useLocation();
-  const user = useAuthStore((state) => state.user);
-  const role = useAuthStore((state) => state.role);
+  const { user, role, isLoading, logout } = useAuthStore();
   const [driftItems, setDriftItems] = useState([]);
   const [trailRuns, setTrailRuns] = useState([]);
 
@@ -206,20 +205,30 @@ export default function Navbar() {
 
         {/* Action Button */}
         <div className="flex items-center gap-4 relative z-10">
-          {user ? (
-            <Link
-              to={role === 'admin' ? '/admin/dashboard' : role === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard'}
-              className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <Link
-              to="/sign-in"
-              className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
-            >
-              Sign In
-            </Link>
+          {!isLoading && (
+            user ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => logout()}
+                  className="px-4 py-2 text-xs uppercase tracking-wider font-bold text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
+                >
+                  Sign Out
+                </button>
+                <Link
+                  to={role === 'admin' ? '/admin/dashboard' : role === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard'}
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
+                >
+                  Dashboard
+                </Link>
+              </div>
+            ) : (
+              <Link
+                to="/sign-in"
+                className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
+              >
+                Sign In
+              </Link>
+            )
           )}
         </div>
 

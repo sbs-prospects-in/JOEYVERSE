@@ -187,7 +187,7 @@ export default function Register() {
               <input 
                 type="email" 
                 id="registerEmail" 
-                placeholder="mark@anitalk.com" 
+                placeholder="mark@joeyverse.com" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
               />

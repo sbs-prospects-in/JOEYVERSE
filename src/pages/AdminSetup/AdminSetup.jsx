@@ -39,7 +39,7 @@ export default function AdminSetup() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-              placeholder="admin@anitalk.com"
+              placeholder="admin@joeyverse.com"
               required
             />
           </div>
