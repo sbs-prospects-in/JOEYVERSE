@@ -5,7 +5,7 @@ import DoctorsPanel from '../../components/DoctorsPanel';
 
 export default function Home() {
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '5rem', paddingTop: '7rem' }}>
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-12 sm:gap-20 pt-20 sm:pt-28 pb-10">
 
       {/* ==========================================
          HERO SECTION (Centered layout based on Vetic mockup structure)
@@ -13,22 +13,7 @@ export default function Home() {
       {/* ==========================================
          HERO SECTION — Centered, Vetic-style
          ========================================== */}
-      <header style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-        gap: '2rem',
-        paddingTop: '3rem',
-        paddingBottom: '2rem',
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: '2.5rem',
-        marginLeft: '-1.5rem',
-        marginRight: '-1.5rem',
-        paddingLeft: '1.5rem',
-        paddingRight: '1.5rem',
-      }}>
+      <header className="flex flex-col items-center text-center gap-6 sm:gap-8 pt-8 sm:pt-12 pb-6 sm:pb-8 relative overflow-hidden rounded-[2.5rem] -mx-4 sm:mx-0 px-4 sm:px-6">
 
         {/* ── Animal Collage Background Grid ── */}
         <div style={{
@@ -80,17 +65,17 @@ export default function Home() {
         {/* ── All content below sits at zIndex 2+ above the background ── */}
 
         {/* ── Decorative floating paw badges ── */}
-        <div style={{ position: 'absolute', top: '3.5rem', left: '6%', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#fef08a', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }} className="animate-float">
-          <PawPrint style={{ width: '16px', height: '16px' }} />
+        <div className="hidden sm:flex absolute top-14 left-[6%] w-10 h-10 rounded-full bg-yellow-200 items-center justify-center pointer-events-none z-10 animate-float">
+          <PawPrint className="w-4 h-4" />
         </div>
-        <div style={{ position: 'absolute', top: '1.5rem', left: '22%', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }} className="animate-float-delayed">
-          <PawPrint style={{ width: '16px', height: '16px' }} />
+        <div className="hidden sm:flex absolute top-6 left-[22%] w-10 h-10 rounded-full bg-sky-200 items-center justify-center pointer-events-none z-10 animate-float-delayed">
+          <PawPrint className="w-4 h-4" />
         </div>
-        <div style={{ position: 'absolute', top: '1.5rem', right: '22%', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }} className="animate-float-slow">
-          <PawPrint style={{ width: '16px', height: '16px' }} />
+        <div className="hidden sm:flex absolute top-6 right-[22%] w-10 h-10 rounded-full bg-orange-200 items-center justify-center pointer-events-none z-10 animate-float-slow">
+          <PawPrint className="w-4 h-4" />
         </div>
-        <div style={{ position: 'absolute', top: '3.5rem', right: '6%', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }} className="animate-float">
-          <PawPrint style={{ width: '16px', height: '16px' }} />
+        <div className="hidden sm:flex absolute top-14 right-[6%] w-10 h-10 rounded-full bg-green-200 items-center justify-center pointer-events-none z-10 animate-float">
+          <PawPrint className="w-4 h-4" />
         </div>
 
         {/* ── Tagline ── */}
@@ -100,14 +85,14 @@ export default function Home() {
         </div>
 
         {/* ── H1 Headline with pink underline SVG on "pet wellness" ── */}
-        <h1 style={{ position: 'relative', zIndex: 2, fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: '800', color: '#0f172a', lineHeight: '1.15', letterSpacing: '-0.02em', maxWidth: '820px', margin: '0 auto' }}>
+        <h1 className="relative z-10 text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 leading-[1.15] tracking-tight max-w-[820px] mx-auto">
           Your reliable partner for{' '}
-          <span style={{ position: 'relative', display: 'inline-block', whiteSpace: 'nowrap' }}>
+          <span className="relative inline-block whitespace-nowrap">
             pet wellness
             <svg
               viewBox="0 0 120 10"
               preserveAspectRatio="none"
-              style={{ position: 'absolute', left: 0, bottom: '-6px', width: '100%', height: '10px', color: '#f472b6' }}
+              className="absolute left-0 -bottom-1.5 w-full h-2 sm:h-2.5 text-pink-400"
               aria-hidden="true"
             >
               <path d="M0,6 C40,10 80,2 120,6" stroke="currentColor" strokeWidth="3.5" fill="none" strokeLinecap="round" />
@@ -116,7 +101,7 @@ export default function Home() {
         </h1>
 
         {/* ── Subheading ── */}
-        <p style={{ position: 'relative', zIndex: 2, fontSize: '1.0625rem', lineHeight: '1.7', color: '#64748b', maxWidth: '560px', margin: '0 auto' }}>
+        <p className="relative z-10 text-base sm:text-lg leading-relaxed text-slate-500 max-w-[560px] mx-auto px-2">
           Connect instantly with certified veterinarians for real-time video consults and secure chat.
           Get professional care for your pet from the comfort of your home.
         </p>
@@ -163,31 +148,31 @@ export default function Home() {
         </div>
 
         {/* ── Three image cards ── */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', width: '100%', marginTop: '1rem' }}>
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-5 w-full mt-4">
           {/* Card 1 — cat, purple bg */}
-          <div style={{ borderRadius: '2rem', overflow: 'hidden', backgroundColor: '#faf5ff', aspectRatio: '4/5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="rounded-[2rem] overflow-hidden bg-purple-50 aspect-[4/5] flex items-center justify-center">
             <img
               src="/images/grey-cat-purple.png"
               alt="Grey cat on purple background"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              className="w-full h-full object-cover block"
               onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400'; }}
             />
           </div>
           {/* Card 2 — vet + puppy, blue bg */}
-          <div style={{ borderRadius: '2rem', overflow: 'hidden', backgroundColor: '#f0f9ff', aspectRatio: '4/5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="rounded-[2rem] overflow-hidden bg-sky-50 aspect-[4/5] flex items-center justify-center">
             <img
               src="/images/vet-puppy-blue.png"
               alt="Veterinarian holding a puppy on blue background"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              className="w-full h-full object-cover block"
               onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=400'; }}
             />
           </div>
           {/* Card 3 — dog, yellow bg */}
-          <div style={{ borderRadius: '2rem', overflow: 'hidden', backgroundColor: '#fefce8', aspectRatio: '4/5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="rounded-[2rem] overflow-hidden bg-yellow-50 aspect-[4/5] hidden sm:flex items-center justify-center">
             <img
               src="/images/collie-yellow.png"
               alt="Border collie dog on yellow background"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              className="w-full h-full object-cover block"
               onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=400'; }}
             />
           </div>
@@ -243,19 +228,7 @@ export default function Home() {
       {/* ==========================================
          INTRO BANNER — Playful pet-shelter style
          ========================================== */}
-      <section style={{
-        position: 'relative',
-        background: '#A8E6A3',
-        borderRadius: '2.5rem',
-        marginLeft: '-1.5rem',
-        marginRight: '-1.5rem',
-        padding: '5rem 2rem 4.5rem',
-        overflow: 'hidden',
-        minHeight: '520px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <section className="relative bg-[#A8E6A3] rounded-[2.5rem] -mx-4 sm:mx-0 px-6 sm:px-8 pt-16 sm:pt-20 pb-16 min-h-[400px] sm:min-h-[520px] flex items-center justify-center overflow-hidden">
 
         {/* ── Decorative SVG wavy lines ── */}
         <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }} viewBox="0 0 1000 520" preserveAspectRatio="none">
@@ -264,130 +237,65 @@ export default function Home() {
         </svg>
 
         {/* ── Blob + Animal: Top Left (lavender blob + dog) ── */}
-        <div style={{ position: 'absolute', top: '2rem', left: '3%', zIndex: 2 }}>
-          <div style={{
-            width: '140px', height: '130px',
-            background: '#c4b5fd',
-            borderRadius: '60% 40% 50% 50% / 50% 60% 40% 50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden',
-          }}>
-            <img src="/images/cartoon-dog.png" alt="" aria-hidden="true"
-              style={{ width: '110px', height: '110px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+        <div className="hidden md:block absolute top-8 left-[3%] z-10">
+          <div className="w-[140px] h-[130px] bg-purple-200 rounded-[60%_40%_50%_50%/50%_60%_40%_50%] flex items-center justify-center overflow-hidden">
+            <img src="/images/cartoon-dog.png" alt="" aria-hidden="true" className="w-[110px] h-[110px] object-contain mix-blend-multiply" />
           </div>
         </div>
 
         {/* ── Blob + Animal: Top Center (mint blob + cat) ── */}
-        <div style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
-          <div style={{
-            width: '130px', height: '120px',
-            background: '#6ee7b7',
-            borderRadius: '50% 60% 40% 50% / 60% 40% 60% 40%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden',
-          }}>
-            <img src="/images/cartoon-cat.png" alt="" aria-hidden="true"
-              style={{ width: '105px', height: '105px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+        <div className="hidden lg:block absolute top-4 left-1/2 -translate-x-1/2 z-10">
+          <div className="w-[130px] h-[120px] bg-emerald-200 rounded-[50%_60%_40%_50%/60%_40%_60%_40%] flex items-center justify-center overflow-hidden">
+            <img src="/images/cartoon-cat.png" alt="" aria-hidden="true" className="w-[105px] h-[105px] object-contain mix-blend-multiply" />
           </div>
         </div>
 
         {/* ── Blob + Animal: Top Right (rose blob + paw emoji) ── */}
-        <div style={{ position: 'absolute', top: '2rem', right: '3%', zIndex: 2 }}>
-          <div style={{
-            width: '135px', height: '125px',
-            background: '#fda4af',
-            borderRadius: '40% 60% 50% 50% / 50% 40% 60% 50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: '4rem', lineHeight: 1 }}>🐱</span>
+        <div className="hidden md:block absolute top-8 right-[3%] z-10">
+          <div className="w-[135px] h-[125px] bg-rose-200 rounded-[40%_60%_50%_50%/50%_40%_60%_50%] flex items-center justify-center text-6xl leading-none">
+            🐱
           </div>
         </div>
 
         {/* ── Blob + Animal: Bottom Left (sky blob + running dog emoji) ── */}
-        <div style={{ position: 'absolute', bottom: '2rem', left: '2%', zIndex: 2 }}>
-          <div style={{
-            width: '130px', height: '110px',
-            background: '#93c5fd',
-            borderRadius: '50% 40% 60% 40% / 40% 60% 40% 60%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: '3.5rem', lineHeight: 1 }}>🐶</span>
+        <div className="hidden lg:block absolute bottom-8 left-[2%] z-10">
+          <div className="w-[130px] h-[110px] bg-blue-200 rounded-[50%_40%_60%_40%/40%_60%_40%_60%] flex items-center justify-center text-5xl leading-none">
+            🐶
           </div>
         </div>
 
         {/* ── Blob + Animal: Bottom Right (yellow blob + rabbit emoji) ── */}
-        <div style={{ position: 'absolute', bottom: '2rem', right: '2%', zIndex: 2 }}>
-          <div style={{
-            width: '140px', height: '130px',
-            background: '#fde68a',
-            borderRadius: '60% 40% 40% 60% / 40% 60% 60% 40%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: '4rem', lineHeight: 1 }}>🐰</span>
+        <div className="hidden sm:block absolute bottom-8 right-[2%] z-10">
+          <div className="w-[140px] h-[130px] bg-yellow-200 rounded-[60%_40%_40%_60%/40%_60%_60%_40%] flex items-center justify-center text-6xl leading-none">
+            🐰
           </div>
         </div>
 
         {/* ── Center Content ── */}
-        <div style={{
-          position: 'relative', zIndex: 3,
-          textAlign: 'center',
-          maxWidth: '580px',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem',
-        }}>
-
+        <div className="relative z-20 text-center max-w-xl mx-auto flex flex-col items-center gap-5">
           {/* Pill badge */}
-          <span style={{
-            display: 'inline-block',
-            background: '#fff',
-            border: '1.5px solid #e879f9',
-            color: '#a21caf',
-            fontSize: '0.6875rem',
-            fontWeight: '700',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            padding: '0.35rem 1rem',
-            borderRadius: '9999px',
-          }}>
+          <span className="inline-block bg-white border-[1.5px] border-fuchsia-400 text-fuchsia-700 text-[11px] font-bold tracking-widest uppercase py-1.5 px-4 rounded-full">
             Why Joeyverse
           </span>
 
           {/* Big playful heading */}
-          <h2 style={{
-            fontSize: 'clamp(2rem, 5vw, 3.5rem)',
-            fontWeight: '900',
-            color: '#1e1b4b',
-            lineHeight: '1.1',
-            letterSpacing: '-0.03em',
-            margin: 0,
-          }}>
-            Speak with a Vet in{' '}
-            <span style={{ color: '#e879f9' }}>Minutes</span>,<br />
+          <h2 className="text-4xl sm:text-5xl font-black text-indigo-950 leading-[1.1] tracking-tight m-0">
+            Speak with a Vet in <span className="text-fuchsia-400">Minutes</span>,<br className="hidden sm:block" />
             Not Days
           </h2>
 
           {/* Description */}
-          <p style={{ fontSize: '0.9375rem', lineHeight: '1.7', color: '#4b5563', margin: 0, maxWidth: '460px' }}>
+          <p className="text-sm sm:text-[15px] leading-relaxed text-gray-600 m-0 max-w-md">
             A worried mind needs a steady voice. Open our app, choose from credentialed board-certified specialists, and start text-chatting or video-calling instantly.
           </p>
-          <p style={{ fontSize: '0.9375rem', lineHeight: '1.7', color: '#4b5563', margin: 0, maxWidth: '460px' }}>
+          <p className="text-sm sm:text-[15px] leading-relaxed text-gray-600 m-0 max-w-md">
             We verify licensing credentials, check active council boards, and confirm veterinary clinical expertise before any professional joins our panels.
           </p>
 
           {/* CTA */}
           <Link
             to="/doctors"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-              backgroundColor: '#1e1b4b',
-              color: '#fff',
-              fontWeight: '700',
-              fontSize: '0.9375rem',
-              padding: '0.85rem 2rem',
-              borderRadius: '9999px',
-              textDecoration: 'none',
-              marginTop: '0.5rem',
-              boxShadow: '0 4px 16px rgba(30,27,75,0.25)',
-            }}
+            className="inline-flex items-center gap-2 bg-indigo-950 text-white font-bold text-[15px] py-3 px-8 rounded-full no-underline mt-2 shadow-[0_4px_16px_rgba(30,27,75,0.25)] hover:scale-105 transition-transform"
           >
             Meet Our Verified Vets →
           </Link>
@@ -403,14 +311,14 @@ export default function Home() {
       {/* ==========================================
          SERVICES PREVIEW SECTION
          ========================================== */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      <section className="flex flex-col gap-10">
         {/* Section Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div className="flex flex-col md:flex-row md:justify-between md:align-bottom gap-4">
           <div>
-            <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 0.4rem' }}>
+            <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-1.5">
               ● What We Do
             </p>
-            <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight m-0">
               Professional Consultations
             </h2>
           </div>
@@ -538,9 +446,9 @@ export default function Home() {
       {/* ==========================================
          SUCCESS STORIES PREVIEW SECTION
          ========================================== */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      <section className="flex flex-col gap-8 sm:gap-10">
         {/* Section Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
           <div>
             <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 0.4rem' }}>
               ● Testimonials
@@ -556,6 +464,7 @@ export default function Home() {
             border: '1.5px solid #86efac', padding: '0.5rem 1.125rem',
             borderRadius: '9999px', background: '#f0fdf4',
             transition: 'all 0.2s ease-in-out',
+            alignSelf: 'flex-start',
           }}>
             Read Stories <ArrowRight size={16} />
           </Link>
@@ -682,20 +591,10 @@ export default function Home() {
       {/* ==========================================
          CLOSING CTA SECTION — Notebook & Graph Paper Style
          ========================================== */}
-      <section style={{
-        position: 'relative',
-        background: '#f2687c', /* Pink base */
+      <section className="relative bg-[#f2687c] rounded-[2.5rem] -mx-4 sm:mx-0 px-4 sm:px-8 py-24 sm:py-28 mb-16 flex flex-col items-center gap-12 sm:gap-14" style={{
         backgroundImage: 'linear-gradient(rgba(255,255,255,0.18) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.18) 2px, transparent 2px)',
         backgroundSize: '28px 28px',
         backgroundPosition: 'center',
-        padding: '7rem 1.5rem',
-        marginLeft: '-1.5rem',
-        marginRight: '-1.5rem',
-        marginBottom: '4rem',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '3.5rem',
       }}>
         {/* Torn Paper Top Border */}
         <div style={{
@@ -730,16 +629,7 @@ export default function Home() {
         </div>
 
         {/* Overlapping Cartoon Pencil (Top Right) */}
-        <div style={{
-          position: 'absolute',
-          top: '3.5rem',
-          right: '8%',
-          width: '210px',
-          height: '40px',
-          zIndex: 5,
-          pointerEvents: 'none',
-          transform: 'rotate(-12deg)',
-        }}>
+        <div className="hidden lg:block absolute top-14 right-[8%] w-[210px] h-[40px] z-10 pointer-events-none -rotate-12">
           <svg viewBox="0 0 210 40" fill="none" style={{ width: '100%', height: '100%' }}>
             {/* Eraser */}
             <path d="M190,10 L202,12 C206,13 208,18 206,22 C204,26 200,28 196,27 L190,25 Z" fill="#fda4af" stroke="#3730a3" strokeWidth="2.5" />
@@ -756,16 +646,7 @@ export default function Home() {
         </div>
 
         {/* Overlapping Cartoon Ruler (Bottom Left) */}
-        <div style={{
-          position: 'absolute',
-          bottom: '2.5rem',
-          left: '5%',
-          width: '280px',
-          height: '60px',
-          zIndex: 5,
-          pointerEvents: 'none',
-          transform: 'rotate(8deg)',
-        }}>
+        <div className="hidden lg:block absolute bottom-10 left-[5%] w-[280px] h-[60px] z-10 pointer-events-none rotate-6">
           <svg viewBox="0 0 280 60" fill="none" style={{ width: '100%', height: '100%' }}>
             {/* Ruler Body */}
             <rect x="5" y="5" width="270" height="48" rx="8" fill="#93c5fd" stroke="#1e3a8a" strokeWidth="3" />
@@ -792,47 +673,17 @@ export default function Home() {
         </div>
 
         {/* Section Header */}
-        <div style={{
-          textAlign: 'center',
-          maxWidth: '680px',
-          zIndex: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1rem',
-        }}>
-          <h2 style={{
-            fontSize: 'clamp(2rem, 5vw, 3.25rem)',
-            fontWeight: '900',
-            color: '#ffffff',
-            lineHeight: '1.15',
-            letterSpacing: '-0.02em',
-            margin: 0,
-            textShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          }}>
+        <div className="text-center max-w-2xl z-10 flex flex-col items-center gap-4 px-2">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-[1.15] tracking-tight drop-shadow-sm">
             Ready to give your companion the care they deserve?
           </h2>
-          <p style={{
-            lineHeight: '1.6',
-            color: 'rgba(255, 255, 255, 0.9)',
-            margin: 0,
-            maxWidth: '540px',
-            fontFamily: "'Caveat', 'Comic Sans MS', cursive",
-            fontSize: '1.5rem',
-          }}>
+          <p className="text-lg sm:text-2xl text-white/90 leading-relaxed max-w-xl font-['Caveat','Comic_Sans_MS',cursive]">
             Connect with certified veterinary panel practitioners instantly!
           </p>
         </div>
 
         {/* Playful 3-Card Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '2rem',
-          width: '100%',
-          maxWidth: '1020px',
-          zIndex: 2,
-        }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 w-full max-w-5xl z-10">
           {[
             {
               title: 'CREATE PROFILE',

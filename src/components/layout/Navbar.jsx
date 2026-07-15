@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { PawPrint } from 'lucide-react';
+import { PawPrint, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/store/authStore';
 
 const NAV_LINKS = [
@@ -30,6 +30,7 @@ export default function Navbar() {
   const [trailRuns, setTrailRuns] = useState([]);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -256,7 +257,7 @@ export default function Navbar() {
             ) : (
               <Link
                 to="/sign-in"
-                className="px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
+                className="hidden md:flex px-5 py-2.5 bg-gradient-to-r from-[#f2687c] to-amber-500 hover:from-amber-500 hover:to-[#f2687c] text-white text-xs uppercase tracking-wider rounded-full font-black shadow-md hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer border border-white/50"
               >
                 Sign In
               </Link>
@@ -270,9 +271,82 @@ export default function Navbar() {
               Install App
             </button>
           )}
+
+          {/* Mobile Menu Toggle Button */}
+          <button 
+            className="md:hidden p-2 rounded-full bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
 
       </header>
+
+      {/* Mobile Menu Drawer */}
+      {isMobileMenuOpen && (
+        <div className="absolute top-[110%] left-4 right-4 bg-white/95 backdrop-blur-xl border border-slate-200/60 shadow-xl rounded-3xl p-6 flex flex-col gap-4 z-50 animate-in slide-in-from-top-4 fade-in duration-200 pointer-events-auto md:hidden">
+          <nav className="flex flex-col gap-3">
+            {NAV_LINKS.map((link) => {
+              const isActive = location.pathname === link.href;
+              return (
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`px-4 py-3 rounded-2xl text-sm font-black tracking-tight transition-all duration-300 ${
+                    isActive 
+                      ? `${link.bgActive} border-slate-200` 
+                      : `text-slate-650 bg-slate-50 border border-transparent hover:bg-slate-100`
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+          
+          <div className="h-px bg-slate-200 my-2" />
+          
+          <div className="flex flex-col gap-3">
+            {!isLoading && (
+              user ? (
+                <>
+                  <Link
+                    to={role === 'admin' ? '/admin/dashboard' : role === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard'}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full text-center px-5 py-3.5 bg-gradient-to-r from-[#f2687c] to-amber-500 text-white text-sm uppercase tracking-wider rounded-2xl font-black shadow-md border border-white/50"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                    className="w-full text-center px-5 py-3.5 bg-slate-100 text-slate-600 text-sm uppercase tracking-wider rounded-2xl font-black"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/sign-in"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full text-center px-5 py-3.5 bg-gradient-to-r from-[#f2687c] to-amber-500 text-white text-sm uppercase tracking-wider rounded-2xl font-black shadow-md border border-white/50"
+                >
+                  Sign In
+                </Link>
+              )
+            )}
+            {isInstallable && (
+              <button
+                onClick={() => { handleInstallClick(); setIsMobileMenuOpen(false); }}
+                className="w-full text-center px-4 py-3.5 text-sm uppercase tracking-wider font-black bg-indigo-50 text-indigo-700 rounded-2xl border border-indigo-200"
+              >
+                Install App
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

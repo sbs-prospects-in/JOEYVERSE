@@ -157,7 +157,7 @@ export default function ChatPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-8 pt-24 selection:bg-[#f2687c]/20">
       <Toaster position="top-center" />
       
-      <div className="w-full max-w-5xl mx-auto px-4 h-[calc(100vh-7rem)] flex flex-col">
+      <div className="w-full max-w-5xl mx-auto px-4 h-[calc(100dvh-7rem)] flex flex-col">
         
         {/* Sleek Minimal Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 shrink-0">
