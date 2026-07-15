@@ -48,6 +48,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const localStreamRef = useRef(null);
   const remoteAudioRef = useRef(null);
   const webrtcChannelRef = useRef(null);
+  const feeDeductedRef = useRef(false);
 
   const callStatusRef = useRef(callStatus);
   useEffect(() => {
@@ -244,47 +245,42 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   // Billing, Messages, and existing logic
   // -------------------------------------------------------------
   useEffect(() => {
-    if (consultationStatus === 'COMPLETED' && userRole === 'petOwner' && user?.id) {
+    if (consultationStatus === 'COMPLETED' && userRole === 'petOwner' && user?.id && !feeDeductedRef.current) {
+      feeDeductedRef.current = true;
       const deductFinalFee = async () => {
         try {
           const desc = `Consultation Fee - ${consultation.id}`;
-          const { data: existingTx } = await supabase
-            .from('wallet_transactions')
-            .select('id')
-            .eq('description', desc)
-            .maybeSingle();
+          const start = new Date(consultation.started_at || consultation.created_at).getTime();
+          const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
+          const seconds = Math.floor((end - start) / 1000);
+          const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+          const fee = intervals * consultation.per_minute_rate;
 
-          if (!existingTx) {
-            const start = new Date(consultation.started_at || consultation.created_at).getTime();
-            const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
-            const seconds = Math.floor((end - start) / 1000);
-            const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-            const fee = intervals * consultation.per_minute_rate;
-
-            if (fee > 0) {
-              try {
-                const response = await fetch('/api/wallet/deduct', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    userId: user.id,
-                    amount: fee,
-                    description: desc
-                  })
-                });
-                
-                if (!response.ok) {
-                  console.error("Failed to deduct fee on server");
-                }
-              } catch (err) {
-                console.error("Deduct fee error:", err);
+          if (fee > 0) {
+            try {
+              const response = await fetch('/api/wallet/deduct', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  userId: user.id,
+                  amount: fee,
+                  description: desc
+                })
+              });
+              
+              if (!response.ok) {
+                console.error("Failed to deduct fee on server");
               }
+            } catch (err) {
+              console.error("Deduct fee error:", err);
+              feeDeductedRef.current = false;
             }
           }
         } catch (err) {
           console.error("Billing error:", err);
+          feeDeductedRef.current = false;
         }
       };
       deductFinalFee();

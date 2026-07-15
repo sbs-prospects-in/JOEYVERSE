@@ -48,6 +48,7 @@ DECLARE
   v_wallet_id UUID;
   v_current_balance NUMERIC;
   v_new_balance NUMERIC;
+  v_existing_tx UUID;
 BEGIN
   SELECT id, balance INTO v_wallet_id, v_current_balance
   FROM public.wallets
@@ -55,6 +56,16 @@ BEGIN
   
   IF v_wallet_id IS NULL THEN
     RETURN 0;
+  END IF;
+
+  -- Idempotency: skip if already deducted for this description
+  SELECT id INTO v_existing_tx
+  FROM public.wallet_transactions
+  WHERE wallet_id = v_wallet_id AND description = p_description
+  LIMIT 1;
+
+  IF v_existing_tx IS NOT NULL THEN
+    RETURN COALESCE(v_current_balance, 0);
   END IF;
   
   v_new_balance := GREATEST(0, COALESCE(v_current_balance, 0) - p_amount);
