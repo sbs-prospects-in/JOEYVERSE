@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.joeyverse.twa",
+      "sha256_cert_fingerprints": [
+        "42:AC:27:FB:AF:BA:C0:58:B1:62:10:36:AB:1A:9E:66:FF:EB:75:9D:5C:8D:CD:F2:CC:F1:39:24:2E:49:D5:AF"
+      ]
+    }
+  }
+]
