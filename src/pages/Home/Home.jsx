@@ -5,7 +5,7 @@ import DoctorsPanel from '../../components/DoctorsPanel';
 
 export default function Home() {
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-12 sm:gap-20 pt-20 sm:pt-28 pb-10">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 sm:space-y-20 pt-20 sm:pt-28 pb-10">
 
       {/* ==========================================
          HERO SECTION (Centered layout based on Vetic mockup structure)
