@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { PawPrint, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/store/authStore';
+import { useModal } from '../../context/ModalContext';
 
 const NAV_LINKS = [
   { label: 'Home', href: '/', bgActive: 'bg-rose-100 text-rose-700 border-rose-200/50 shadow-sm rotate-[-1.5deg]', hoverStyle: 'hover:bg-rose-50 hover:text-rose-600' },
@@ -26,6 +27,7 @@ function PawSVG({ size, color, className }) {
 export default function Navbar() {
   const location = useLocation();
   const { user, role, isLoading, logout } = useAuthStore();
+  const { openContact } = useModal();
   const [driftItems, setDriftItems] = useState([]);
   const [trailRuns, setTrailRuns] = useState([]);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -207,13 +209,11 @@ export default function Navbar() {
         {/* Brand Logo with Paw circle */}
         <Link 
           to="/" 
-          className="text-slate-900 font-extrabold text-lg md:text-xl tracking-tight flex items-center gap-1.5 sm:gap-2 cursor-pointer relative z-10"
+          className="text-slate-900 font-extrabold text-lg md:text-xl tracking-tight flex items-center gap-3 sm:gap-4 cursor-pointer relative z-10"
           aria-label="Joeyverse"
         >
-          <div className="w-8 h-8 rounded-full bg-[#f472b6] flex items-center justify-center text-black shrink-0">
-            <PawPrint className="h-6 w-6 text-rose-500 group-hover:rotate-12 transition-transform duration-300" />
-          </div>
-          <span>Joeyverse</span>
+          <img src="/images/logo_icon.png" alt="Joeyverse Icon" className="h-10 md:h-12 w-auto object-contain" />
+          <img src="/images/logo_text.png" alt="Joeyverse Text" className="h-5 md:h-6 w-auto object-contain -translate-y-0.5 ml-1" />
         </Link>
 
         {/* Navigation Links */}
@@ -234,6 +234,12 @@ export default function Navbar() {
               </Link>
             );
           })}
+          <button
+            onClick={() => openContact('general')}
+            className={`px-3 py-1.5 rounded-full border border-transparent text-xs font-black tracking-tight transition-all duration-300 cursor-pointer text-slate-650 hover:bg-slate-50 hover:text-slate-700 hover:scale-105 active:scale-95`}
+          >
+            Contact
+          </button>
         </nav>
 
         {/* Action Button */}
@@ -304,6 +310,12 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            <button
+              onClick={() => { openContact('general'); setIsMobileMenuOpen(false); }}
+              className={`px-4 py-3 rounded-2xl text-sm font-black tracking-tight transition-all duration-300 text-slate-650 bg-slate-50 border border-transparent hover:bg-slate-100 text-left`}
+            >
+              Contact
+            </button>
           </nav>
           
           <div className="h-px bg-slate-200 my-2" />

@@ -15,6 +15,9 @@ import PetOwnerDashboardPage from "./features/pet-owner/pages/DashboardPage";
 import AdminDashboardPage from "./features/admin/pages/DashboardPage";
 import AdminSetup from "./pages/AdminSetup/AdminSetup";
 import ChatPage from "./pages/shared/ChatPage";
+import Blogs from "./pages/Blogs/Blogs";
+import BlogPost from "./pages/Blogs/BlogPost";
+import FAQs from "./pages/FAQs/FAQs";
 import { useAuthStore } from "./features/auth/store/authStore";
 
 // Inline protected route component
@@ -52,6 +55,9 @@ export const router = createBrowserRouter([
       { path: "/why-choose-us", element: <WhyChooseUs /> },
       { path: "/register", element: <Register /> },
       { path: "/sign-in", element: <SignIn /> },
+      { path: "/blogs", element: <Blogs /> },
+      { path: "/blogs/:id", element: <BlogPost /> },
+      { path: "/faqs", element: <FAQs /> },
       { 
         path: "/doctor/dashboard", 
         element: (

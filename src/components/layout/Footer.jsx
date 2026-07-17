@@ -191,13 +191,9 @@ export default function Footer() {
           
           {/* Col 1: Brand & Desc */}
           <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-white rounded-full p-2.5 shadow-sm inline-flex shrink-0">
-                <PawPrint className="w-7 h-7 text-rose-500" />
-              </div>
-              <h3 className="text-2xl font-black text-slate-900 leading-tight">
-                Joeyverse
-              </h3>
+            <div className="flex items-center gap-5">
+              <img src="/images/logo_icon.png" alt="Joeyverse Icon" className="h-16 md:h-20 w-auto object-contain" />
+              <img src="/images/logo_text.png" alt="Joeyverse Text" className="h-7 md:h-9 w-auto object-contain -translate-y-1 ml-2" />
             </div>
             <p className="text-[0.9rem] leading-relaxed text-slate-600">
               Where pet parents find the best care, advice, and support. Trusted connections for happier, healthier pets and a well-balanced life.
@@ -237,11 +233,11 @@ export default function Footer() {
             <ul className="flex flex-col gap-3">
               {[
                 { name: 'Home', path: '/' },
-                { name: 'About Us', path: '/' },
+                { name: 'About Us', path: '/about' },
                 { name: 'Services', path: '/services' },
                 { name: 'Our Team', path: '/doctors' },
-                { name: 'Blog', path: '/' },
-                { name: 'FAQs', path: '/' },
+                { name: 'Blog', path: '/blogs' },
+                { name: 'FAQs', path: '/faqs' },
               ].map((link, i) => (
                 <li key={i} className="border-b border-dashed border-slate-900/10 pb-2.5 last:border-0 last:pb-0">
                   <Link to={link.path} className="flex items-center gap-2 text-sm text-slate-600 hover:text-rose-600 transition-colors group">
@@ -261,11 +257,18 @@ export default function Footer() {
             <ul className="flex flex-col gap-5">
               <li className="flex items-start gap-3.5 text-sm text-slate-600">
                 <MapPin className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                <span>123, Pet Care Street,<br/>Happy Paws City, 380001</span>
+                <a 
+                  href="https://maps.google.com/?q=1003,+Span+Trade+Center,+Paldi,+Ahmedabad" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-rose-600 transition-colors"
+                >
+                  1003, Span Trade Center,<br/>Paldi, Ahmedabad
+                </a>
               </li>
               <li className="flex items-center gap-3.5 text-sm text-slate-600">
                 <Mail className="w-5 h-5 text-rose-600 shrink-0" />
-                <span>hello@joeyverse.com</span>
+                <span>joeyverse2025@gmail.com</span>
               </li>
               <li className="flex items-center gap-3.5 text-sm text-slate-600">
                 <Phone className="w-5 h-5 text-rose-600 shrink-0" />

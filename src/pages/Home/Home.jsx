@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { PawPrint, Video, Pill, Apple, HeartPulse, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import DoctorsPanel from '../../components/DoctorsPanel';
+import FAQSection from '../../components/FAQSection';
+import BlogSection from '../../components/BlogSection';
 
 export default function Home() {
   return (
@@ -374,7 +377,8 @@ export default function Home() {
               hoverGlow: 'rgba(4, 120, 87, 0.08)',
             },
           ].map((srv, idx) => (
-            <div
+            <Link
+              to="/services"
               key={idx}
               className="service-card-interactive"
               style={{
@@ -390,6 +394,7 @@ export default function Home() {
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
                 position: 'relative',
                 overflow: 'hidden',
+                textDecoration: 'none'
               }}
             >
               {/* Colored Badge Top Border accent */}
@@ -438,7 +443,7 @@ export default function Home() {
               }}>
                 Learn more <ArrowRight size={14} className="arrow-icon-shift" style={{ transition: 'transform 0.25s ease' }} />
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -505,8 +510,13 @@ export default function Home() {
               color: '#78350f',
             },
           ].map((story, idx) => (
-            <div
+            <motion.div
               key={idx}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: idx * 0.1 }}
+              whileHover={{ scale: 1.02, y: -5 }}
               style={{
                 background: '#ffffff',
                 border: '1px solid #e2e8f0',
@@ -583,10 +593,16 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
+
+      {/* ==========================================
+         FAQ & BLOG SECTIONS
+         ========================================== */}
+      <FAQSection />
+      <BlogSection />
 
       {/* ==========================================
          CLOSING CTA SECTION — Notebook & Graph Paper Style

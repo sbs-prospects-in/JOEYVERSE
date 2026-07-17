@@ -4,6 +4,11 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import { useAuthStore } from './features/auth/store/authStore';
 
+// Modals
+import ContactModal from './components/ui/ContactModal';
+import AdoptionModal from './components/ui/AdoptionModal';
+import DonateModal from './components/ui/DonateModal';
+
 export default function App() {
   const location = useLocation();
   const { initAuth } = useAuthStore();
@@ -30,6 +35,10 @@ export default function App() {
       {/* Footer Shared Component — style later */}
       {!location.pathname.startsWith('/doctor') && !location.pathname.startsWith('/pet-owner') && <Footer />}
 
+      {/* Global Modals */}
+      <ContactModal />
+      <AdoptionModal />
+      <DonateModal />
     </div>
   );
 }

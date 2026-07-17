@@ -2,7 +2,73 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../features/auth/api/supabase';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../features/auth/store/authStore';
-import { Send, ShieldCheck, CheckCircle, Phone, PhoneCall, PhoneOff, Mic, MicOff, Trash2, StopCircle } from 'lucide-react';
+import { Send, ShieldCheck, CheckCircle, Phone, PhoneCall, PhoneOff, Mic, MicOff, Trash2, StopCircle, Paperclip, Play, Pause, Image as ImageIcon, X } from 'lucide-react';
+
+const VoiceMessagePlayer = ({ src, duration: initialDuration }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef(null);
+  const duration = initialDuration || 0;
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    const audio = audioRef.current;
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+    
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    return () => {
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, []);
+
+  const togglePlay = () => {
+    if (audioRef.current.paused) {
+      audioRef.current.play();
+      setIsPlaying(true);
+    } else {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const formatTime = (totalSeconds) => {
+    if (isNaN(totalSeconds) || totalSeconds < 0) totalSeconds = 0;
+    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="flex items-center gap-3 bg-white/50 rounded-xl px-3 py-2 min-w-[140px]">
+      <audio ref={audioRef} src={src} className="hidden" />
+      <button 
+        onClick={togglePlay}
+        className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 hover:bg-blue-700 transition-colors"
+      >
+        {isPlaying ? <Pause size={14} /> : <Play size={14} className="translate-x-0.5" />}
+      </button>
+      <div className="flex flex-col">
+        <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
+          <div className="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all ease-linear" style={{ width: `${progress}%` }}></div>
+        </div>
+        <span className="text-[10px] text-slate-500 font-medium mt-1">
+          {isPlaying ? formatTime(currentTime) : formatTime(duration)}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 export default function ChatRoom({ consultation, currentUserId, otherPersonName }) {
   const [messages, setMessages] = useState([]);
@@ -42,6 +108,9 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const typingChannelRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [mediaPreview, setMediaPreview] = useState(null);
 
   // WebRTC Refs
   const peerConnectionRef = useRef(null);
@@ -486,8 +555,86 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       consultation_id: consultation.id,
       sender_id: currentUserId,
       receiver_id: receiverId,
-      message_text: messageText
+      message_text: messageText,
+      message_type: 'text'
     }]);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const type = file.type.startsWith('video/') ? 'video' : 'image';
+    setMediaPreview({ file, previewUrl, type });
+    e.target.value = ''; // Clear input
+  };
+
+  const cancelMediaPreview = () => {
+    if (mediaPreview?.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl);
+    setMediaPreview(null);
+  };
+
+  const confirmAndUploadMedia = async () => {
+    if (!mediaPreview) return;
+    const { file, type } = mediaPreview;
+
+    setUploadingMedia(true);
+    setMediaPreview(null);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `${consultation.id}/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from('chat-media')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('chat-media')
+        .getPublicUrl(filePath);
+
+      const fileUrl = publicUrlData.publicUrl;
+
+      const tempMessage = {
+        id: Math.random().toString(),
+        consultation_id: consultation.id,
+        sender_id: currentUserId,
+        message_text: '',
+        message_type: type,
+        file_url: fileUrl,
+        created_at: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      scrollToBottom();
+
+      const receiverId = currentUserId === consultation.doctor_id ? consultation.owner_id : consultation.doctor_id;
+
+      await supabase.from('messages').insert([{
+        consultation_id: consultation.id,
+        sender_id: currentUserId,
+        receiver_id: receiverId,
+        message_text: '',
+        message_type: type,
+        file_url: fileUrl
+      }]);
+      
+    } catch (err) {
+      console.error('Error uploading media:', err);
+      toast.error('Failed to upload file');
+    } finally {
+      setUploadingMedia(false);
+      if (mediaPreview?.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl);
+    }
   };
 
   const startRecording = async () => {
@@ -581,11 +728,13 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   };
 
   const sendVoiceMessage = async (base64String) => {
+    const audioPayload = `${base64String}|${recordingTime}`;
     const tempMessage = {
       id: Math.random().toString(),
       consultation_id: consultation.id,
       sender_id: currentUserId,
-      message_text: base64String,
+      message_text: audioPayload,
+      message_type: 'voice',
       created_at: new Date().toISOString()
     };
     
@@ -598,7 +747,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       consultation_id: consultation.id,
       sender_id: currentUserId,
       receiver_id: receiverId,
-      message_text: base64String
+      message_text: audioPayload,
+      message_type: 'voice'
     }]);
   };
 
@@ -666,6 +816,43 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         </div>
       </div>
 
+      {/* File Preview Modal */}
+      {mediaPreview && (
+        <div className="absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center p-6 backdrop-blur-sm lg:rounded-r-2xl">
+          <div className="bg-white rounded-2xl shadow-xl p-4 max-w-sm w-full relative">
+            <button 
+              onClick={cancelMediaPreview}
+              className="absolute -top-3 -right-3 w-8 h-8 bg-white text-slate-600 rounded-full shadow hover:bg-slate-50 flex items-center justify-center border border-slate-200"
+            >
+              <X size={16} />
+            </button>
+            <div className="mb-4 flex justify-center bg-slate-100 rounded-xl overflow-hidden aspect-square items-center">
+              {mediaPreview.type === 'video' ? (
+                <video src={mediaPreview.previewUrl} controls className="max-w-full max-h-full" />
+              ) : (
+                <img src={mediaPreview.previewUrl} alt="Preview" className="max-w-full max-h-full object-contain" />
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={cancelMediaPreview}
+                className="flex-1 py-3 px-4 rounded-xl font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmAndUploadMedia}
+                className="flex-1 py-3 px-4 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                disabled={uploadingMedia}
+              >
+                {uploadingMedia ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <Send size={18} />}
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Messages Area - Crisp and Clear */}
       <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/50">
         {messages.length === 0 ? (
@@ -708,7 +895,14 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                     }`}
                   >
                     {isAudioMessage ? (
-                      <audio controls src={msg.message_text} className="max-w-[200px] sm:max-w-[250px] h-10" />
+                      <VoiceMessagePlayer 
+                        src={msg.message_text.split('|')[0]} 
+                        duration={parseInt(msg.message_text.split('|')[1] || '0', 10)} 
+                      />
+                    ) : msg.message_type === 'image' || (msg.file_url && msg.file_url.match(/\.(jpeg|jpg|gif|png)$/i)) ? (
+                      <img src={msg.file_url} alt="Attachment" className="max-w-[200px] sm:max-w-[250px] rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.file_url, '_blank')} />
+                    ) : msg.message_type === 'video' || (msg.file_url && msg.file_url.match(/\.(mp4|webm|ogg)$/i)) ? (
+                      <video controls src={msg.file_url} className="max-w-[200px] sm:max-w-[250px] rounded-xl bg-black" />
                     ) : (
                       <p className="leading-relaxed">{msg.message_text}</p>
                     )}
@@ -783,6 +977,22 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                 onChange={handleTyping}
                 placeholder="Type your message..."
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-5 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+              />
+              <button 
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingMedia}
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-colors shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+                title="Attach Photo/Video"
+              >
+                {uploadingMedia ? <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin"></div> : <Paperclip size={18} />}
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                className="hidden" 
+                accept="image/*,video/*" 
               />
               <button 
                 type="button"
