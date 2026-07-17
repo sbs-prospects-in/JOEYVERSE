@@ -23,3 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Android Build Artifacts
+.gradle/
+app/build/
+app/release/
+build/
+dev-dist/
+local.properties
+android.keystore
+store_icon.png
