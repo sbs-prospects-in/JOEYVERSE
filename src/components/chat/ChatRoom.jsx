@@ -455,7 +455,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             return prev;
           });
         }
-      }, 3000);
+      }, 30000);
       
       const fallbackConsInterval = setInterval(async () => {
         const { data } = await supabase
@@ -468,7 +468,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
           setConsultationStatus('COMPLETED');
           setEndTime(data.ended_at || new Date().toISOString());
         }
-      }, 5000);
+      }, 30000);
 
       return () => {
         if (walletChannel) supabase.removeChannel(walletChannel);
@@ -535,7 +535,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
           payload: { isTyping: false }
         });
       }
-    }, 2000);
+    }, 30000);
   };
 
   const handleSendMessage = async (e) => {

@@ -303,7 +303,7 @@ export default function PetOwnerDashboard() {
             if (changed) fetchConsultations();
           }
         }
-      }, 3000);
+      }, 30000);
 
       return () => {
         supabase.removeChannel(channel);
@@ -651,24 +651,12 @@ export default function PetOwnerDashboard() {
               </nav>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-md">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mb-3">
-                <Star size={20} className="fill-white" />
-              </div>
-              <h3 className="font-bold text-lg mb-1">Premium Support</h3>
-              <p className="text-blue-100 text-sm mb-4">
-                Get 24/7 priority access to top-rated veterinarians.
-              </p>
-              <button className="w-full bg-white text-blue-700 font-bold py-2 rounded-xl text-sm hover:bg-blue-50 transition-colors">
-                Upgrade Plan
-              </button>
-            </div>
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Consultations Column */}
-            <div className="space-y-6">
+            <div className="space-y-6 lg:col-span-2">
               <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
                 <Activity size={20} className="text-slate-700" /> Recent
                 Consultations

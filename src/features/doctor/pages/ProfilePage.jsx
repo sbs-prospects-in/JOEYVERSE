@@ -1,11 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Settings, Edit3, Award } from 'lucide-react';
+import { ArrowLeft, User, Mail, Settings, Edit3, Award, Save, X } from 'lucide-react';
 import { useAuthStore } from '../../auth/store/authStore';
+import { supabase } from '../../auth/api/supabase';
+import toast from 'react-hot-toast';
 
 export default function DoctorProfilePage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(user?.user_metadata?.name || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    setIsSaving(true);
+    const { error } = await supabase.auth.updateUser({
+      data: { name: name.trim() }
+    });
+    
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Profile updated successfully!");
+      setIsEditing(false);
+      window.location.reload();
+    }
+    setIsSaving(false);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-20 pt-8 px-4">
@@ -31,14 +57,45 @@ export default function DoctorProfilePage() {
             </div>
             
             <div className="flex-1 text-center md:text-left">
-              <h1 className="text-3xl font-black text-slate-900">{user?.user_metadata?.name || 'Doctor'}</h1>
+              {isEditing ? (
+                <input 
+                  type="text" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="text-3xl font-black text-slate-900 border-b-2 border-emerald-500 focus:outline-none bg-transparent w-full max-w-sm px-1 py-1"
+                  placeholder="Your Name"
+                />
+              ) : (
+                <h1 className="text-3xl font-black text-slate-900">{user?.user_metadata?.name || 'Doctor'}</h1>
+              )}
               <p className="text-slate-500 font-medium">Veterinary Specialist • {user?.email}</p>
             </div>
             
             <div className="flex gap-3 mt-4 md:mt-0">
-              <button className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-sm">
-                Edit Profile
-              </button>
+              {isEditing ? (
+                <>
+                  <button 
+                    onClick={() => { setIsEditing(false); setName(user?.user_metadata?.name || ''); }}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-sm flex items-center gap-2"
+                  >
+                    <X size={16} /> Cancel
+                  </button>
+                  <button 
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Save size={16} /> {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-sm flex items-center gap-2"
+                >
+                  <Edit3 size={16} /> Edit Profile
+                </button>
+              )}
             </div>
           </div>
 
@@ -50,7 +107,16 @@ export default function DoctorProfilePage() {
               <div className="space-y-4">
                 <div>
                   <p className="text-xs text-slate-500 mb-1">Full Name</p>
-                  <p className="font-semibold text-slate-800">{user?.user_metadata?.name || 'N/A'}</p>
+                  {isEditing ? (
+                    <input 
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="font-semibold text-slate-800 border-b border-slate-300 focus:border-emerald-500 focus:outline-none bg-transparent w-full pb-1"
+                    />
+                  ) : (
+                    <p className="font-semibold text-slate-800">{user?.user_metadata?.name || 'N/A'}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 mb-1">Email Address</p>

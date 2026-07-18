@@ -22,7 +22,7 @@ export default function App() {
   }, [location.pathname]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowX: 'hidden', width: '100vw', maxWidth: '100%' }}>
       
       {/* Navbar Shared Component — style later */}
       {!location.pathname.startsWith('/doctor') && !location.pathname.startsWith('/pet-owner') && <Navbar />}

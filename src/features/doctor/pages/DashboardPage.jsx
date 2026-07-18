@@ -356,7 +356,7 @@ export default function DoctorDashboard() {
     // Fallback polling every 5 seconds just in case Realtime isn't fully configured on the table
     const pollInterval = setInterval(() => {
       fetchDashboardData();
-    }, 5000);
+    }, 30000);
 
     return () => {
       supabase.removeChannel(queueChannel);
