@@ -233,7 +233,7 @@ export default function Footer() {
             <ul className="flex flex-col gap-3">
               {[
                 { name: 'Home', path: '/' },
-                { name: 'About Us', path: '/about' },
+                { name: 'About Us', path: '/why-choose-us' },
                 { name: 'Services', path: '/services' },
                 { name: 'Our Team', path: '/doctors' },
                 { name: 'Blog', path: '/blogs' },

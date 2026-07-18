@@ -12,6 +12,7 @@
   --accent: #2563eb;          /* blue-600 */
   --accent-hover: #1d4ed8;    /* blue-700 */
   --border-light: #e2e8f0;    /* slate-200 */
+  color-scheme: light;
 }
 
 /* =============================================
