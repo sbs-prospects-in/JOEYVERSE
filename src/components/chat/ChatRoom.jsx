@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../features/auth/api/supabase';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../features/auth/store/authStore';
-import { Send, ShieldCheck, CheckCircle, Phone, PhoneCall, PhoneOff, Mic, MicOff, Trash2, StopCircle, Paperclip, Play, Pause, Image as ImageIcon, X } from 'lucide-react';
+import { Send, ShieldCheck, CheckCircle, Phone, PhoneCall, PhoneOff, Mic, MicOff, Trash2, StopCircle, Paperclip, Play, Pause, Image as ImageIcon, X, Star } from 'lucide-react';
 
 const VoiceMessagePlayer = ({ src, duration: initialDuration }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -83,6 +83,17 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const [endTime, setEndTime] = useState(consultation.ended_at);
   const { role: userRole, user } = useAuthStore();
   
+  // Rating state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+  const [hasRated, setHasRated] = useState(false);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  
+  // Wallet warning state
+  const [showWalletWarning, setShowWalletWarning] = useState(false);
+  const walletWarningShownRef = useRef(false);
+  
   useEffect(() => {
     if (consultation.status !== consultationStatus) {
       setConsultationStatus(consultation.status);
@@ -110,7 +121,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaPreviews, setMediaPreviews] = useState([]); // Array for multiple files
 
   // WebRTC Refs
   const peerConnectionRef = useRef(null);
@@ -277,7 +288,29 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     setCallStatus('idle');
   };
 
+  const endCall = async () => {
+    try {
+      if (consultationStatus === 'COMPLETED') return;
+      const { error } = await supabase
+        .from('consultations')
+        .update({ 
+          status: 'COMPLETED',
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', consultation.id);
+        
+      if (!error) {
+        setConsultationStatus('COMPLETED');
+        endCallLocal();
+      }
+    } catch (err) {
+      console.error("Error ending call:", err);
+    }
+  };
+
   const endCallLocal = () => {
+    setCallStatus('idle');
+    setIncomingCallData(null);
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -286,12 +319,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.srcObject = null;
-    }
-    setCallStatus('idle');
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
     setIsMuted(false);
-    setIncomingCallData(null);
   };
 
   const hangUp = () => {
@@ -316,45 +345,16 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   useEffect(() => {
     if (consultationStatus === 'COMPLETED' && userRole === 'petOwner' && user?.id && !feeDeductedRef.current) {
       feeDeductedRef.current = true;
-      const deductFinalFee = async () => {
-        try {
-          const desc = `Consultation Fee - ${consultation.id}`;
-          const start = new Date(consultation.started_at || consultation.created_at).getTime();
-          const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
-          const seconds = Math.floor((end - start) / 1000);
-          const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-          const fee = intervals * consultation.per_minute_rate;
-
-          if (fee > 0) {
-            try {
-              const response = await fetch('/api/wallet/deduct', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  userId: user.id,
-                  amount: fee,
-                  description: desc
-                })
-              });
-              
-              if (!response.ok) {
-                console.error("Failed to deduct fee on server");
-              }
-            } catch (err) {
-              console.error("Deduct fee error:", err);
-              feeDeductedRef.current = false;
-            }
-          }
-        } catch (err) {
-          console.error("Billing error:", err);
-          feeDeductedRef.current = false;
-        }
-      };
-      deductFinalFee();
+      // Note: The actual wallet deduction is now securely and idempotently handled by the Node.js backend cron job
+      // which detects COMPLETED consultations and runs `wallet_deduct` via Supabase RPC.
     }
-  }, [consultationStatus, userRole, consultation, endTime, user?.id]);
+    
+    // Show rating modal for pet owner when completed
+    if (consultationStatus === 'COMPLETED' && userRole === 'petOwner' && !hasRated) {
+      const timer = setTimeout(() => setShowRatingModal(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [consultationStatus, userRole, consultation, endTime, user?.id, hasRated]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -485,11 +485,28 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       setActiveSeconds(Math.floor((Date.now() - start) / 1000));
 
       interval = setInterval(() => {
-        setActiveSeconds(Math.floor((Date.now() - start) / 1000));
+        const currentSeconds = Math.floor((Date.now() - start) / 1000);
+        setActiveSeconds(currentSeconds);
+        
+        // Check wallet warning
+        if (userRole === 'petOwner' && consultation.per_minute_rate > 0) {
+          const maxTimeAllowed = Math.floor((walletBalance / consultation.per_minute_rate) * 60);
+          const remainingSeconds = maxTimeAllowed - currentSeconds;
+          
+          if (remainingSeconds <= 60 && remainingSeconds > 0 && !walletWarningShownRef.current) {
+            setShowWalletWarning(true);
+            walletWarningShownRef.current = true;
+          }
+          
+          // Force end if time is completely up
+          if (remainingSeconds <= 0 && consultationStatus === 'ACTIVE') {
+            endCall();
+          }
+        }
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [consultationStatus, consultation.started_at, consultation.created_at]);
+  }, [consultationStatus, consultation, walletBalance, userRole]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -561,81 +578,97 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   };
 
   const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      toast.error('File size must be less than 10MB');
+    if (files.length > 5) {
+      toast.error('You can only upload up to 5 files at once');
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    const type = file.type.startsWith('video/') ? 'video' : 'image';
-    setMediaPreview({ file, previewUrl, type });
+    const validFiles = files.filter(f => {
+      if (f.size > 10 * 1024 * 1024) {
+        toast.error(`File ${f.name} is too large (max 10MB)`);
+        return false;
+      }
+      return true;
+    });
+
+    const newPreviews = validFiles.map(file => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' : 'image'
+    }));
+
+    setMediaPreviews(prev => [...prev, ...newPreviews].slice(0, 5));
     e.target.value = ''; // Clear input
   };
 
-  const cancelMediaPreview = () => {
-    if (mediaPreview?.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl);
-    setMediaPreview(null);
+  const cancelMediaPreview = (indexToCancel) => {
+    if (indexToCancel !== undefined) {
+      const removed = mediaPreviews[indexToCancel];
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      setMediaPreviews(prev => prev.filter((_, i) => i !== indexToCancel));
+    } else {
+      mediaPreviews.forEach(p => URL.revokeObjectURL(p.previewUrl));
+      setMediaPreviews([]);
+    }
   };
 
   const confirmAndUploadMedia = async () => {
-    if (!mediaPreview) return;
-    const { file, type } = mediaPreview;
-
+    if (!mediaPreviews.length) return;
+    
     setUploadingMedia(true);
-    setMediaPreview(null);
+    const filesToUpload = [...mediaPreviews];
+    setMediaPreviews([]);
 
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-      const filePath = `${consultation.id}/${fileName}`;
+    for (const { file, type } of filesToUpload) {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `${consultation.id}/${fileName}`;
 
-      const { error } = await supabase.storage
-        .from('chat-media')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+        const { error } = await supabase.storage
+          .from('chat-media')
+          .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const { data: publicUrlData } = supabase.storage
-        .from('chat-media')
-        .getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage
+          .from('chat-media')
+          .getPublicUrl(filePath);
 
-      const fileUrl = publicUrlData.publicUrl;
+        const fileUrl = publicUrlData.publicUrl;
 
-      const tempMessage = {
-        id: Math.random().toString(),
-        consultation_id: consultation.id,
-        sender_id: currentUserId,
-        message_text: '',
-        message_type: type,
-        file_url: fileUrl,
-        created_at: new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, tempMessage]);
-      scrollToBottom();
-
-      const receiverId = currentUserId === consultation.doctor_id ? consultation.owner_id : consultation.doctor_id;
-
-      await supabase.from('messages').insert([{
-        consultation_id: consultation.id,
-        sender_id: currentUserId,
-        receiver_id: receiverId,
-        message_text: '',
-        message_type: type,
-        file_url: fileUrl
-      }]);
-      
-    } catch (err) {
-      console.error('Error uploading media:', err);
-      toast.error('Failed to upload file');
-    } finally {
-      setUploadingMedia(false);
-      if (mediaPreview?.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl);
+        const tempMessage = {
+          id: Math.random().toString(),
+          consultation_id: consultation.id,
+          sender_id: currentUserId,
+          message_text: '',
+          message_type: type,
+          file_url: fileUrl,
+          created_at: new Date().toISOString()
+        };
+        
+        setMessages(prev => [...prev, tempMessage]);
+        
+        await supabase.from('messages').insert([{
+          consultation_id: consultation.id,
+          sender_id: currentUserId,
+          receiver_id: currentUserId === consultation.doctor_id ? consultation.owner_id : consultation.doctor_id,
+          message_text: '',
+          message_type: type,
+          file_url: fileUrl
+        }]);
+      } catch (err) {
+        console.error('Error uploading media', err);
+        toast.error('Failed to upload ' + file.name);
+      }
     }
+    
+    setUploadingMedia(false);
   };
+
 
   const startRecording = async () => {
     try {
@@ -781,7 +814,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             <span className="text-slate-700 font-bold text-sm">{otherPersonName.charAt(0)}</span>
           </div>
           <div>
-            <h3 className="text-slate-900 font-bold">{otherPersonName}</h3>
+            <h3 className="text-slate-900 font-bold text-sm md:text-base">Live Consultation with {otherPersonName}</h3>
             {consultationStatus === 'ACTIVE' ? (
               <span className="text-emerald-500 text-xs font-semibold flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -816,26 +849,38 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         </div>
       </div>
 
-      {/* File Preview Modal */}
-      {mediaPreview && (
-        <div className="absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center p-6 backdrop-blur-sm lg:rounded-r-2xl">
-          <div className="bg-white rounded-2xl shadow-xl p-4 max-w-sm w-full relative">
-            <button 
-              onClick={cancelMediaPreview}
-              className="absolute -top-3 -right-3 w-8 h-8 bg-white text-slate-600 rounded-full shadow hover:bg-slate-50 flex items-center justify-center border border-slate-200"
-            >
-              <X size={16} />
-            </button>
-            <div className="mb-4 flex justify-center bg-slate-100 rounded-xl overflow-hidden aspect-square items-center">
-              {mediaPreview.type === 'video' ? (
-                <video src={mediaPreview.previewUrl} controls className="max-w-full max-h-full" />
-              ) : (
-                <img src={mediaPreview.previewUrl} alt="Preview" className="max-w-full max-h-full object-contain" />
-              )}
+      {/* Media Preview Modal */}
+      {mediaPreviews.length > 0 && (
+        <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-slate-800">Send {mediaPreviews.length} Media {mediaPreviews.length > 1 ? 'Files' : 'File'}</h3>
+              <button onClick={() => cancelMediaPreview()} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                <X size={16} />
+              </button>
             </div>
-            <div className="flex gap-3">
+            
+            <div className="flex gap-2 overflow-x-auto pb-4">
+              {mediaPreviews.map((preview, i) => (
+                <div key={i} className="relative w-32 h-32 rounded-xl bg-slate-100 shrink-0 overflow-hidden group">
+                  {preview.type === 'video' ? (
+                    <video src={preview.previewUrl} className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={preview.previewUrl} className="w-full h-full object-cover" alt="Preview" />
+                  )}
+                  <button 
+                    onClick={() => cancelMediaPreview(i)} 
+                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 mt-4">
               <button 
-                onClick={cancelMediaPreview}
+                onClick={() => cancelMediaPreview()}
                 className="flex-1 py-3 px-4 rounded-xl font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
               >
                 Cancel
@@ -847,6 +892,105 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
               >
                 {uploadingMedia ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <Send size={18} />}
                 Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {showRatingModal && (
+        <div className="absolute inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full animate-in zoom-in-95 duration-200 relative">
+            <button 
+              onClick={() => setShowRatingModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-500">
+                <Star size={32} className="fill-current" />
+              </div>
+              <h3 className="font-black text-xl text-slate-900">Rate Consultation</h3>
+              <p className="text-sm text-slate-500 font-medium mt-2">How was your experience with {otherPersonName}?</p>
+            </div>
+            
+            <div className="flex justify-center gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button 
+                  key={star} 
+                  onClick={() => setRating(star)} 
+                  className="text-4xl hover:scale-110 transition-transform focus:outline-none"
+                >
+                  <Star size={40} className={rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'} />
+                </button>
+              ))}
+            </div>
+            
+            <textarea 
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              placeholder="Write a brief review (optional)..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm mb-6 resize-none h-28 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+            />
+            
+            <button 
+              onClick={async () => {
+                setIsSubmittingRating(true);
+                try {
+                  await supabase.from('consultations').update({
+                    rating: rating,
+                    review_text: reviewText
+                  }).eq('id', consultation.id);
+                  toast.success("Thank you for your feedback!");
+                  setShowRatingModal(false);
+                  setHasRated(true);
+                } catch (err) {
+                  toast.error("Failed to submit rating.");
+                }
+                setIsSubmittingRating(false);
+              }}
+              disabled={rating === 0 || isSubmittingRating}
+              className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {isSubmittingRating ? 'Submitting...' : 'Submit Review'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet Warning Modal */}
+      {showWalletWarning && (
+        <div className="absolute inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full animate-in zoom-in-95 duration-200 relative text-center border-t-4 border-rose-500">
+            <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-500">
+              <DollarSign size={32} className="fill-current opacity-20" />
+              <DollarSign size={32} className="absolute" />
+            </div>
+            <h3 className="font-black text-xl text-slate-900 mb-2">Low Balance Warning</h3>
+            <p className="text-sm text-slate-500 font-medium mb-8">
+              You have less than 1 minute of consultation time remaining based on your wallet balance. Please recharge or the consultation will automatically end.
+            </p>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  setShowWalletWarning(false);
+                  window.open('/pet-owner/dashboard', '_blank');
+                }}
+                className="w-full bg-rose-600 text-white font-bold py-4 rounded-xl hover:bg-rose-700 transition-colors"
+              >
+                Recharge & Continue
+              </button>
+              <button 
+                onClick={() => {
+                  setShowWalletWarning(false);
+                  endCall();
+                }}
+                className="w-full bg-slate-100 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-200 transition-colors"
+              >
+                End Conversation
               </button>
             </div>
           </div>
@@ -973,6 +1117,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
               <input
                 type="text"
+                autoFocus
                 value={newMessage}
                 onChange={handleTyping}
                 placeholder="Type your message..."
@@ -993,6 +1138,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                 onChange={handleFileUpload} 
                 className="hidden" 
                 accept="image/*,video/*" 
+                multiple
               />
               <button 
                 type="button"

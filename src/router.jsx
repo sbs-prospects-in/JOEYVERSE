@@ -13,6 +13,8 @@ import NotFound from "./pages/NotFound/NotFound";
 import DoctorDashboardPage from "./features/doctor/pages/DashboardPage";
 import PetOwnerDashboardPage from "./features/pet-owner/pages/DashboardPage";
 import AdminDashboardPage from "./features/admin/pages/DashboardPage";
+import DoctorProfilePage from "./features/doctor/pages/ProfilePage";
+import PetOwnerProfilePage from "./features/pet-owner/pages/ProfilePage";
 import AdminSetup from "./pages/AdminSetup/AdminSetup";
 import ChatPage from "./pages/shared/ChatPage";
 import Blogs from "./pages/Blogs/Blogs";
@@ -75,9 +77,33 @@ export const router = createBrowserRouter([
         )
       },
       { 
+        path: "/pet-owner/profile", 
+        element: (
+          <ProtectedRoute allowedRole="petOwner">
+            <PetOwnerProfilePage />
+          </ProtectedRoute>
+        )
+      },
+      { 
+        path: "/doctor/profile", 
+        element: (
+          <ProtectedRoute allowedRole="doctor">
+            <DoctorProfilePage />
+          </ProtectedRoute>
+        )
+      },
+      { 
         path: "/pet-owner/chat/:id", 
         element: (
           <ProtectedRoute allowedRole="petOwner">
+            <ChatPage />
+          </ProtectedRoute>
+        )
+      },
+      { 
+        path: "/doctor/chat/:id", 
+        element: (
+          <ProtectedRoute allowedRole="doctor">
             <ChatPage />
           </ProtectedRoute>
         )

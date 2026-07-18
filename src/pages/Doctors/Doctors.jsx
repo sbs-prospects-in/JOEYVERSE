@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   Star, Award, MessageCircle, X, 
-  ArrowLeft, Activity, ShieldCheck, Zap, User, Clock, PhoneCall
+  ArrowLeft, Activity, ShieldCheck, Zap, User, Clock, PhoneCall, ChevronDown
 } from 'lucide-react';
 
 export default function Doctors() {
@@ -17,8 +17,25 @@ export default function Doctors() {
   // Ringing Flow State
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
-  const [isRinging, setIsRinging] = useState(false);
   const [currentConsultationId, setCurrentConsultationId] = useState(null);
+  const [isRinging, setIsRinging] = useState(false);
+  
+  // Pet Selection State
+  const [myPets, setMyPets] = useState([]);
+  const [selectedPetId, setSelectedPetId] = useState('');
+
+  // Fetch user's pets
+  useEffect(() => {
+    if (user?.id) {
+      supabase.from('pets').select('id, name').eq('owner_id', user.id)
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setMyPets(data);
+            setSelectedPetId(data[0].id);
+          }
+        });
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchDoctors();
@@ -120,6 +137,7 @@ export default function Doctors() {
         .insert({
           doctor_id: doc.id,
           owner_id: user.id,
+          pet_id: selectedPetId || null,
           status: 'WAITLIST',
           per_minute_rate: doc.fee
         });
@@ -168,6 +186,7 @@ export default function Doctors() {
     const { data, error } = await supabase.from('consultations').insert({
       doctor_id: selectedDoctor.id,
       owner_id: user.id,
+      pet_id: selectedPetId || null,
       per_minute_rate: selectedDoctor.fee,
       status: 'RINGING'
     }).select().single();
@@ -250,80 +269,120 @@ export default function Doctors() {
         {/* Doctors Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {sortedDoctors.map((doc) => (
-            <div key={doc.id} className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm hover:shadow-md transition-shadow group flex flex-col h-full">
-              
-              <div className="p-6 pb-0">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="w-20 h-20 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
-                    <img 
-                      src={doc.img} 
-                      alt={doc.name} 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400'; }} 
-                    />
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {doc.status === 'ONLINE' ? (
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Online
-                      </span>
-                    ) : doc.status === 'BUSY' ? (
-                      <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> In Call
-                      </span>
-                    ) : (
-                      <span className="bg-slate-50 text-slate-500 border border-slate-200 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
-                        Offline
-                      </span>
-                    )}
-                    
-                    <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-md">
-                      <Star size={12} className="fill-amber-500 text-amber-500" />
-                      <span className="font-bold text-xs">{doc.rating}</span>
+            <div key={doc.id} className="relative group">
+              <div className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm group-hover:shadow-2xl group-hover:border-blue-200 transition-all duration-300 flex flex-col absolute top-0 left-0 right-0 bottom-0 z-10 group-hover:z-20 group-hover:-left-2 group-hover:-right-2 md:group-hover:-left-4 md:group-hover:-right-4 group-hover:-top-4 md:group-hover:-top-4 group-hover:bottom-auto group-hover:h-auto group-hover:pb-4">
+                
+                <div className="p-6 pb-0">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden border border-slate-100 shadow-sm shrink-0">
+                      <img 
+                        src={doc.img} 
+                        alt={doc.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400'; }} 
+                      />
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      {doc.status === 'ONLINE' ? (
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online
+                        </span>
+                      ) : doc.status === 'BUSY' ? (
+                        <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> In Call
+                        </span>
+                      ) : (
+                        <span className="bg-slate-50 text-slate-500 border border-slate-200 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
+                          Offline
+                        </span>
+                      )}
+                      
+                      <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-md">
+                        <Star size={12} className="fill-amber-500 text-amber-500" />
+                        <span className="font-bold text-xs">{doc.rating}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div>
-                  <h3 className="text-xl font-black text-slate-900 leading-tight">{doc.name}</h3>
-                  <p className="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1 mb-3">
-                    {doc.specialty}
-                  </p>
-                  <p className="text-slate-500 text-sm font-medium line-clamp-2 min-h-[40px]">
-                    {doc.bio || "Dedicated veterinary professional ready to assist you with your pet's needs."}
-                  </p>
+                    <Link to={`/doctor/${doc.id}`}>
+                      <h3 className="text-xl font-black text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">{doc.name}</h3>
+                    </Link>
+                    <p className="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1 mb-3">
+                      {doc.specialty}
+                    </p>
+                    <div className="relative">
+                      <p className="text-slate-500 text-sm font-medium line-clamp-2 group-hover:line-clamp-none min-h-[40px] transition-all duration-300">
+                        {doc.bio || "Dedicated veterinary professional ready to assist you with your pet's needs."}
+                      </p>
+                    </div>
+                    
+                    {/* Extra details only visible on hover */}
+                    <div className="mt-4 grid grid-cols-2 gap-2 opacity-0 h-0 group-hover:h-auto group-hover:opacity-100 group-hover:mt-6 transition-all duration-300 overflow-hidden">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 flex items-center gap-1"><ShieldCheck size={12}/> Verified</span>
+                        <span className="text-xs font-bold text-slate-700">Lic. #VET892</span>
+                      </div>
+                      <div className="bg-blue-50 p-2.5 rounded-xl border border-blue-100 flex flex-col justify-center">
+                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-0.5 flex items-center gap-1"><MessageCircle size={12}/> Consults</span>
+                        <span className="text-xs font-bold text-blue-700">1,200+ Pets</span>
+                      </div>
+                    </div>
+                  </div>
+
+                <div className="mt-auto p-6 pt-5 bg-white">
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium">
+                      <Award size={16} className="text-slate-400" /> {doc.experience} Years Exp.
+                    </div>
+                    <div className="font-black text-slate-900 text-lg">
+                      ₹{doc.fee}<span className="text-sm font-semibold text-slate-400">/min</span>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      if (doc.status === 'BUSY') {
+                        handleWaitlistClick(doc);
+                      } else {
+                        handleChatClick(doc);
+                      }
+                    }}
+                    disabled={doc.status === 'OFFLINE'}
+                    className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 group-hover:shadow-lg ${
+                      doc.status === 'ONLINE' 
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
+                        : doc.status === 'BUSY'
+                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {doc.status === 'ONLINE' ? 'Consult Now' : doc.status === 'BUSY' ? 'Join Waitlist' : 'Offline'}
+                  </button>
                 </div>
               </div>
-
-              <div className="mt-auto p-6 pt-5">
-                <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium">
-                    <Award size={16} className="text-slate-400" /> {doc.experience} Years Exp.
+              {/* Invisible spacer to maintain grid height when absolute positioned card expands */}
+              <div className="invisible bg-white border border-transparent rounded-[24px] flex flex-col h-full pointer-events-none">
+                <div className="p-6 pb-0">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="w-20 h-20 rounded-2xl border border-transparent shrink-0"></div>
                   </div>
-                  <div className="font-black text-slate-900 text-lg">
-                    ₹{doc.fee}<span className="text-sm font-semibold text-slate-400">/min</span>
+                  <div>
+                    <h3 className="text-xl font-black text-transparent leading-tight">{doc.name}</h3>
+                    <p className="text-transparent font-bold text-xs uppercase mt-1 mb-3">
+                      {doc.specialty}
+                    </p>
+                    <p className="text-transparent text-sm font-medium line-clamp-2 min-h-[40px]">
+                      {doc.bio || "Dedicated veterinary professional ready to assist you with your pet's needs."}
+                    </p>
                   </div>
                 </div>
-
-                <button 
-                  onClick={() => {
-                    if (doc.status === 'BUSY') {
-                      handleWaitlistClick(doc);
-                    } else {
-                      handleChatClick(doc);
-                    }
-                  }}
-                  disabled={doc.status === 'OFFLINE'}
-                  className={`w-full py-3.5 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 ${
-                    doc.status === 'ONLINE' 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
-                      : doc.status === 'BUSY'
-                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  {doc.status === 'ONLINE' ? 'Consult Now' : doc.status === 'BUSY' ? 'Join Waitlist' : 'Offline'}
-                </button>
+                <div className="mt-auto p-6 pt-5">
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-transparent">
+                    <div className="text-sm text-transparent font-medium">Exp</div>
+                    <div className="text-lg text-transparent">Fee</div>
+                  </div>
+                  <button className="w-full py-3.5 rounded-xl text-transparent">Btn</button>
+                </div>
               </div>
             </div>
           ))}
@@ -378,6 +437,24 @@ export default function Doctors() {
             </div>
 
             <form onSubmit={startCall}>
+              {myPets.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Select Pet</label>
+                  <div className="relative">
+                    <select 
+                      value={selectedPetId}
+                      onChange={(e) => setSelectedPetId(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 pr-10 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer"
+                    >
+                      {myPets.map(pet => (
+                        <option key={pet.id} value={pet.id}>{pet.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
               <div className="mb-6">
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Primary Concern</label>
                 <textarea 

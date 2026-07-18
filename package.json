@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:all": "concurrently \"vite\" \"node server.js\"",
+    "dev:all": "concurrently \"vite\" \"node api/index.js\"",
     "build": "vite build",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
@@ -34,6 +34,7 @@
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-easy-crop": "^6.2.2",
     "react-hook-form": "^7.81.0",
     "react-hot-toast": "^2.5.1",
     "react-router-dom": "^7.1.5",

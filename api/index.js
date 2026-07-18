@@ -203,9 +203,69 @@ const supabaseServiceRoleClient = createClient(
 
 setInterval(async () => {
   try {
-    const { error } = await supabaseServiceRoleClient.rpc('process_active_consultations_billing');
-    if (error) {
-      console.error('Billing cron error:', error.message);
+    // 1. Auto-end active consultations that run out of balance
+    const { data: activeCons } = await supabaseServiceRoleClient
+      .from('consultations')
+      .select('id, started_at, per_minute_rate, owner_id')
+      .eq('status', 'ACTIVE');
+      
+    if (activeCons && activeCons.length > 0) {
+      for (const c of activeCons) {
+         if (!c.started_at) continue;
+         
+         const { data: walletData } = await supabaseServiceRoleClient
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', c.owner_id)
+            .single();
+            
+         if (!walletData) continue;
+         
+         const start = new Date(c.started_at).getTime();
+         const now = Date.now();
+         const seconds = Math.floor((now - start) / 1000);
+         const intervals = Math.ceil(Math.max(seconds, 1) / 60);
+         const costSoFar = intervals * c.per_minute_rate;
+         
+         if (costSoFar > walletData.balance) {
+            await supabaseServiceRoleClient.from('consultations').update({
+              status: 'COMPLETED',
+              ended_at: new Date().toISOString()
+            }).eq('id', c.id);
+         }
+      }
+    }
+    
+    // 2. Bill recently COMPLETED consultations
+    const { data: completedCons } = await supabaseServiceRoleClient
+      .from('consultations')
+      .select('id, started_at, ended_at, per_minute_rate, owner_id')
+      .eq('status', 'COMPLETED')
+      .not('ended_at', 'is', null)
+      .not('started_at', 'is', null)
+      .order('ended_at', { ascending: false })
+      .limit(20);
+      
+    if (completedCons && completedCons.length > 0) {
+       for (const c of completedCons) {
+          const desc = `Consultation Fee - ${c.id}`;
+          const start = new Date(c.started_at).getTime();
+          const end = new Date(c.ended_at).getTime();
+          let seconds = Math.floor((end - start) / 1000);
+          if (seconds < 0) seconds = 0;
+          // Charge minimum of 1 interval for any connected call
+          const intervals = Math.ceil(Math.max(seconds, 1) / 60);
+          const fee = intervals * c.per_minute_rate;
+          
+          if (fee > 0) {
+             // Idempotent call, will only deduct once per description
+             await supabaseServiceRoleClient.rpc('wallet_deduct', {
+               p_user_id: c.owner_id,
+               p_amount: fee,
+               p_description: desc
+             });
+          }
+       }
     }
   } catch (err) {
     console.error('Billing cron exception:', err.message);
