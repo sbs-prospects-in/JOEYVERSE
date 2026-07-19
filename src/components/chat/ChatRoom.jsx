@@ -93,6 +93,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   // Wallet warning state
   const [showWalletWarning, setShowWalletWarning] = useState(false);
   const walletWarningShownRef = useRef(false);
+  const ratingModalShownRef = useRef(false);
   
   useEffect(() => {
     if (consultation.status !== consultationStatus) {
@@ -350,7 +351,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     }
     
     // Show rating modal for pet owner when completed
-    if (consultationStatus === 'COMPLETED' && userRole === 'petOwner' && !hasRated) {
+    if (consultationStatus === 'COMPLETED' && userRole === 'petOwner' && !hasRated && !ratingModalShownRef.current) {
+      ratingModalShownRef.current = true;
       const timer = setTimeout(() => setShowRatingModal(true), 1500);
       return () => clearTimeout(timer);
     }
@@ -587,8 +589,18 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     }
 
     const validFiles = files.filter(f => {
-      if (f.size > 10 * 1024 * 1024) {
-        toast.error(`File ${f.name} is too large (max 10MB)`);
+      if (f.type.startsWith('image/')) {
+        if (f.size > 5 * 1024 * 1024) {
+          toast.error(`Image ${f.name} is too large (max 5MB)`);
+          return false;
+        }
+      } else if (f.type.startsWith('video/')) {
+        if (f.size > 25 * 1024 * 1024) {
+          toast.error(`Video ${f.name} is too large (max 25MB)`);
+          return false;
+        }
+      } else {
+        toast.error(`File ${f.name} has an unsupported format. Only images and videos are allowed.`);
         return false;
       }
       return true;
@@ -803,7 +815,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     <div className="h-full flex flex-col bg-white relative">
       
       {/* Hidden Audio element for WebRTC incoming stream */}
-      <audio ref={remoteAudioRef} autoPlay />
+      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
       {/* Voice Call Floating UI Overlay - REMOVED FOR NOW */}
 
@@ -939,17 +951,39 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
               onClick={async () => {
                 setIsSubmittingRating(true);
                 try {
-                  await supabase.from('consultations').update({
+                  const { error: ratingError } = await supabase.from('consultations').update({
                     rating: rating,
                     review_text: reviewText
                   }).eq('id', consultation.id);
+                  if (ratingError) throw ratingError;
+
+                  // Update Doctor Profile Average Rating
+                  const { data: pastConsultations } = await supabase
+                    .from('consultations')
+                    .select('rating')
+                    .eq('doctor_id', consultation.doctor_id)
+                    .not('rating', 'is', null);
+                    
+                  if (pastConsultations) {
+                    // Include the new rating in the aggregation
+                    const totalRatings = pastConsultations.reduce((acc, curr) => acc + curr.rating, 0) + rating;
+                    const count = pastConsultations.length + 1;
+                    const newAvg = (totalRatings / count).toFixed(1);
+                    
+                    await supabase.from('doctor_profiles').update({
+                      rating: parseFloat(newAvg)
+                    }).eq('id', consultation.doctor_id);
+                  }
+
                   toast.success("Thank you for your feedback!");
                   setShowRatingModal(false);
                   setHasRated(true);
                 } catch (err) {
+                  console.error(err);
                   toast.error("Failed to submit rating.");
+                } finally {
+                  setIsSubmittingRating(false);
                 }
-                setIsSubmittingRating(false);
               }}
               disabled={rating === 0 || isSubmittingRating}
               className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"

@@ -52,7 +52,8 @@ DECLARE
 BEGIN
   SELECT id, balance INTO v_wallet_id, v_current_balance
   FROM public.wallets
-  WHERE user_id = p_user_id;
+  WHERE user_id = p_user_id
+  FOR UPDATE;
   
   IF v_wallet_id IS NULL THEN
     RETURN 0;

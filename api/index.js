@@ -253,8 +253,8 @@ setInterval(async () => {
           const end = new Date(c.ended_at).getTime();
           let seconds = Math.floor((end - start) / 1000);
           if (seconds < 0) seconds = 0;
-          // Charge minimum of 1 interval for any connected call
-          const intervals = Math.ceil(Math.max(seconds, 1) / 60);
+          
+          const intervals = Math.ceil(Math.max(seconds, 0) / 60);
           const fee = intervals * c.per_minute_rate;
           
           if (fee > 0) {

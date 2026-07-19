@@ -37,6 +37,8 @@ export default function Doctors() {
     }
   }, [user]);
 
+  const [primaryConcern, setPrimaryConcern] = useState("");
+
   useEffect(() => {
     fetchDoctors();
     
@@ -188,11 +190,12 @@ export default function Doctors() {
       owner_id: user.id,
       pet_id: selectedPetId || null,
       per_minute_rate: selectedDoctor.fee,
-      status: 'RINGING'
+      status: 'RINGING',
+      primary_concern: primaryConcern
     }).select().single();
 
     if (error) {
-      toast.error("Failed to call doctor.");
+      toast.error("Failed to call doctor. (Did you run the primary_concern migration?)");
       setIsRinging(false);
       setSelectedDoctor(null);
     } else {
@@ -460,6 +463,8 @@ export default function Doctors() {
                 <textarea 
                   required
                   rows={3}
+                  value={primaryConcern}
+                  onChange={(e) => setPrimaryConcern(e.target.value)}
                   className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none shadow-sm"
                   placeholder="Briefly describe why you are consulting..."
                 ></textarea>

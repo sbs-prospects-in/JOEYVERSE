@@ -88,26 +88,45 @@ export default function DoctorDashboard() {
     // Helper to enrich consultations with owner names
     const enrichWithOwnerNames = async (consultationsData) => {
       if (!consultationsData || consultationsData.length === 0) return [];
-      const ownerIds = [...new Set(consultationsData.map((c) => c.owner_id))];
+      
+      const ownerIds = [...new Set(consultationsData.map((c) => c.owner_id).filter(Boolean))];
+      const petIds = [...new Set(consultationsData.map((c) => c.pet_id).filter(Boolean))];
+      
       const { data: owners } = await supabase
         .from("owner_profiles")
         .select("id, name")
         .in("id", ownerIds);
 
+      let pets = null;
+      if (petIds.length > 0) {
+        const { data } = await supabase
+          .from("pets")
+          .select("id, name")
+          .in("id", petIds);
+        pets = data;
+      }
+
       const ownerMap = {};
       if (owners) {
         owners.forEach((o) => (ownerMap[o.id] = o.name));
       }
+      
+      const petMap = {};
+      if (pets) {
+        pets.forEach((p) => (petMap[p.id] = p.name));
+      }
+
       return consultationsData.map((c) => ({
         ...c,
         owner: { name: ownerMap[c.owner_id] || "Pet Owner" },
+        pet: c.pet_id && petMap[c.pet_id] ? { name: petMap[c.pet_id] } : null,
       }));
     };
 
     // 2. Fetch Incoming Consultations (RINGING)
     const { data: reqData } = await supabase
       .from("consultations")
-      .select(`id, status, created_at, owner_id`)
+      .select(`id, status, created_at, owner_id, primary_concern, pet_id`)
       .eq("doctor_id", user.id)
       .eq("status", "RINGING")
       .order("created_at", { ascending: false });
@@ -117,7 +136,7 @@ export default function DoctorDashboard() {
     // 3. Fetch Active Consultations
     const { data: activeData } = await supabase
       .from("consultations")
-      .select(`id, status, created_at, owner_id`)
+      .select(`id, status, created_at, owner_id, primary_concern, pet_id`)
       .eq("doctor_id", user.id)
       .eq("status", "ACTIVE")
       .order("created_at", { ascending: false });
@@ -128,7 +147,7 @@ export default function DoctorDashboard() {
     // 4. Fetch Waitlist
     const { data: waitlistData } = await supabase
       .from("consultations")
-      .select("id, status, created_at, owner_id")
+      .select("id, status, created_at, owner_id, primary_concern, pet_id")
       .eq("doctor_id", user.id)
       .eq("status", "WAITLIST")
       .order("created_at", { ascending: true });
@@ -158,7 +177,7 @@ export default function DoctorDashboard() {
     const { data: historyData } = await supabase
       .from("consultations")
       .select(
-        "id, status, created_at, owner_id, started_at, ended_at, per_minute_rate, rating, feedback",
+        "id, status, created_at, owner_id, started_at, ended_at, per_minute_rate, rating, feedback, primary_concern, pet_id",
       )
       .eq("doctor_id", user.id)
       .in("status", ["COMPLETED", "REJECTED", "CANCELLED"])
@@ -444,16 +463,61 @@ export default function DoctorDashboard() {
       }
     };
 
-    // Mock Chart Data
-    const earningsData = [
-      { name: "Mon", earnings: 1200, patients: 4 },
-      { name: "Tue", earnings: 2100, patients: 7 },
-      { name: "Wed", earnings: 800, patients: 3 },
-      { name: "Thu", earnings: 1600, patients: 5 },
-      { name: "Fri", earnings: 2400, patients: 8 },
-      { name: "Sat", earnings: 3200, patients: 10 },
-      { name: "Sun", earnings: 2900, patients: 9 },
-    ];
+    const earningsData = React.useMemo(() => {
+      if (!history || history.length === 0) return [];
+      
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      
+      let dataMap = {}; // key -> { earnings, patients }
+
+      history.forEach(c => {
+        if (c.status === "COMPLETED" && c.started_at && c.ended_at) {
+          const endedTime = new Date(c.ended_at).getTime();
+          const startedTime = new Date(c.started_at).getTime();
+          const seconds = Math.floor((endedTime - startedTime) / 1000);
+          const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+          const cost = intervals * c.per_minute_rate;
+          const dateObj = new Date(c.ended_at);
+
+          if (earningsFilter === 'Today') {
+            if (endedTime >= today) {
+              const hour = dateObj.getHours() + ':00';
+              if (!dataMap[hour]) dataMap[hour] = { earnings: 0, patients: 0 };
+              dataMap[hour].earnings += cost;
+              dataMap[hour].patients += 1;
+            }
+          } else if (earningsFilter === 'Weekly') {
+            const oneWeekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+            if (endedTime >= oneWeekAgo) {
+              const day = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+              if (!dataMap[day]) dataMap[day] = { earnings: 0, patients: 0 };
+              dataMap[day].earnings += cost;
+              dataMap[day].patients += 1;
+            }
+          } else if (earningsFilter === 'Monthly') {
+            const oneMonthAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+            if (endedTime >= oneMonthAgo) {
+              const week = 'W' + Math.ceil(dateObj.getDate() / 7);
+              if (!dataMap[week]) dataMap[week] = { earnings: 0, patients: 0 };
+              dataMap[week].earnings += cost;
+              dataMap[week].patients += 1;
+            }
+          } else { // Total
+            const month = dateObj.toLocaleDateString('en-US', { month: 'short' });
+            if (!dataMap[month]) dataMap[month] = { earnings: 0, patients: 0 };
+            dataMap[month].earnings += cost;
+            dataMap[month].patients += 1;
+          }
+        }
+      });
+
+      return Object.keys(dataMap).map(key => ({
+        name: key,
+        earnings: dataMap[key].earnings,
+        patients: dataMap[key].patients
+      }));
+    }, [history, earningsFilter]);
 
     const fullDisplayName =
       profileData?.name ||
@@ -754,6 +818,11 @@ export default function DoctorDashboard() {
                               <p className="text-sm text-white/80">
                                 Owner: {req.owner?.name}
                               </p>
+                              {req.primary_concern && (
+                                <p className="text-xs text-white/90 mt-1 italic opacity-90 line-clamp-2">
+                                  "{req.primary_concern}"
+                                </p>
+                              )}
                             </div>
                             <div className="bg-white/20 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider animate-pulse">
                               Live Call
@@ -807,6 +876,11 @@ export default function DoctorDashboard() {
                               <h4 className="font-bold text-slate-900 text-sm">
                                 {w.owner?.name}
                               </h4>
+                              {w.primary_concern && (
+                                <p className="text-xs text-slate-500 mb-1 italic line-clamp-1">
+                                  "{w.primary_concern}"
+                                </p>
+                              )}
                               <p className="text-xs font-medium text-amber-500 flex items-center gap-1 mt-0.5">
                                 <Clock size={12} /> Waiting in queue
                               </p>
@@ -874,6 +948,11 @@ export default function DoctorDashboard() {
                               <h4 className="font-bold text-slate-900 mb-0.5">
                                 {req.owner?.name}
                               </h4>
+                              {req.primary_concern && (
+                                <p className="text-xs text-slate-500 mb-2 italic line-clamp-1">
+                                  "{req.primary_concern}"
+                                </p>
+                              )}
                               <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-2 py-0.5 rounded-full w-fit">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />{" "}
                                 In Progress
@@ -1137,10 +1216,10 @@ export default function DoctorDashboard() {
                   <div className="flex flex-col gap-4 p-4 sm:p-6">
                     {history.map((session) => {
                       let earnings = 0;
-                      let m = "00",
-                        s = "00";
+                      let m = "--", s = "--";
+                      
                       if (
-                        session.status === "COMPLETED" &&
+                        (session.status === "COMPLETED" || session.status === "CANCELLED") &&
                         session.started_at &&
                         session.ended_at
                       ) {
@@ -1154,10 +1233,13 @@ export default function DoctorDashboard() {
                           .toString()
                           .padStart(2, "0");
                         s = (seconds % 60).toString().padStart(2, "0");
-                        const intervals = Math.ceil(
-                          Math.max(seconds, 0) / 60,
-                        );
-                        earnings = intervals * session.per_minute_rate;
+                        
+                        if (session.status === "COMPLETED") {
+                          const intervals = Math.ceil(
+                            Math.max(seconds, 0) / 60,
+                          );
+                          earnings = intervals * session.per_minute_rate;
+                        }
                       }
 
                       const dateToUse =
@@ -1225,7 +1307,7 @@ export default function DoctorDashboard() {
                                 {session.status === "COMPLETED" ? `Earned: ₹${earnings}` : "₹0 Earned"}
                               </div>
                               <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1">
-                                <Clock size={12} /> {session.status === "COMPLETED" ? `${m}:${s} mins` : "--:-- mins"}
+                                <Clock size={12} /> {(session.status === "COMPLETED" || session.status === "CANCELLED") && session.started_at ? `${m}:${s} mins` : "--:-- mins"}
                               </div>
                             </div>
 
