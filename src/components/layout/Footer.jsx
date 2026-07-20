@@ -65,9 +65,25 @@ export default function Footer() {
             </div>
             
             {/* Cartoon Pets Sitting Side-by-Side */}
-            <div className="flex items-end gap-1 mt-4 relative h-28 w-max select-none">
-              <img src="/images/cartoon-dog-transparent.png" alt="Cartoon Dog" className="h-28 object-contain" />
-              <img src="/images/sitting-cat.svg" alt="Cartoon Cat" className="h-20 w-20 object-contain ml-[-20px] pb-1 shrink-0" />
+            <div className="flex items-end gap-1 mt-4 relative h-28 w-max select-none" style={{ colorScheme: 'light only' }}>
+              <div 
+                className="h-28 w-[80px]" 
+                style={{ 
+                  backgroundImage: "url('/images/cartoon-dog-transparent.png')", 
+                  backgroundSize: "contain", 
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "bottom"
+                }} 
+              />
+              <div 
+                className="h-20 w-20 ml-[-20px] pb-1 shrink-0" 
+                style={{ 
+                  backgroundImage: "url('/images/sitting-cat.svg')", 
+                  backgroundSize: "contain", 
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "bottom"
+                }} 
+              />
               {/* Heart bubble */}
               <div className="absolute top-4 left-24 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
                 <Heart className="w-3 h-3 fill-current text-white" />
