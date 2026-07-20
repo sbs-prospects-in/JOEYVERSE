@@ -93,10 +93,12 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const [hasRated, setHasRated] = useState(!!consultation.rating);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   
-  // Wallet warning state
   const [showWalletWarning, setShowWalletWarning] = useState(false);
   const walletWarningShownRef = useRef(false);
   const ratingModalShownRef = useRef(false);
+  
+  // Media Viewer state
+  const [selectedMedia, setSelectedMedia] = useState(null);
   
   // Navigation guard
   const blocker = useBlocker(
@@ -1103,9 +1105,24 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                         duration={parseInt(msg.message_text.split('|')[1] || '0', 10)} 
                       />
                     ) : msg.message_type === 'image' || (msg.file_url && msg.file_url.match(/\.(jpeg|jpg|gif|png)$/i)) ? (
-                      <img src={msg.file_url} alt="Attachment" className="max-w-[200px] sm:max-w-[250px] rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.file_url, '_blank')} />
+                      <img 
+                        src={msg.file_url} 
+                        alt="Attachment" 
+                        className="max-w-[200px] sm:max-w-[250px] rounded-xl cursor-pointer hover:opacity-90 transition-opacity shadow-sm" 
+                        onClick={() => setSelectedMedia({ type: 'image', url: msg.file_url })} 
+                      />
                     ) : msg.message_type === 'video' || (msg.file_url && msg.file_url.match(/\.(mp4|webm|ogg)$/i)) ? (
-                      <video controls src={msg.file_url} className="max-w-[200px] sm:max-w-[250px] rounded-xl bg-black" />
+                      <div 
+                        className="relative max-w-[200px] sm:max-w-[250px] rounded-xl overflow-hidden cursor-pointer group shadow-sm"
+                        onClick={() => setSelectedMedia({ type: 'video', url: msg.file_url })}
+                      >
+                        <video src={msg.file_url} className="w-full bg-black pointer-events-none" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                          <div className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center">
+                            <Play className="text-white fill-white translate-x-0.5" size={24} />
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <p className="leading-relaxed">{msg.message_text}</p>
                     )}
@@ -1294,6 +1311,38 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                </div>
              )}
            </div>
+         </div>
+      )}
+
+      {/* Media Viewer Modal */}
+      {selectedMedia && (
+        <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden rounded-3xl">
+          <button 
+            onClick={() => setSelectedMedia(null)}
+            className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-50 p-2 bg-black/50 rounded-full"
+          >
+            <X size={20} />
+          </button>
+          
+          {/* Click outside to close */}
+          <div className="absolute inset-0 z-40 cursor-pointer" onClick={() => setSelectedMedia(null)} />
+          
+          <div className="relative z-50 w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
+            {selectedMedia.type === 'image' ? (
+              <img 
+                src={selectedMedia.url} 
+                alt="Enlarged media" 
+                className="max-w-full max-h-full object-contain shadow-2xl select-none"
+              />
+            ) : (
+              <video 
+                src={selectedMedia.url} 
+                controls
+                autoPlay
+                className="max-w-full max-h-full shadow-2xl bg-black"
+              />
+            )}
+          </div>
         </div>
       )}
     </div>

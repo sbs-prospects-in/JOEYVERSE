@@ -56,7 +56,6 @@ export default function ChatPage() {
   
   const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showRating, setShowRating] = useState(false);
 
   useEffect(() => {
     const initChat = async () => {
@@ -101,9 +100,6 @@ export default function ChatPage() {
           setConsultation(prev => {
              // Only show rating if the chat transitioned from ACTIVE to COMPLETED while on this page
              if (prev && prev.status === 'ACTIVE') {
-                 if (userRole === 'petOwner' && !payload.new.rated) {
-                     setShowRating(true);
-                 }
                  return {...prev, status: 'COMPLETED'};
              }
              return prev;
@@ -123,24 +119,33 @@ export default function ChatPage() {
 
     // Update consultation status to COMPLETED
     const endedAt = new Date().toISOString();
+
+    try {
+      const start = new Date(consultation.started_at || consultation.created_at).getTime();
+      const end = new Date(endedAt).getTime();
+      let seconds = Math.floor((end - start) / 1000);
+      if (seconds < 0) seconds = 0;
+      const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+      const finalFee = intervals * consultation.per_minute_rate;
+      
+      if (finalFee > 0) {
+        const { error: walletError } = await supabase.rpc('wallet_deduct', {
+          p_user_id: consultation.owner_id,
+          p_amount: finalFee,
+          p_description: `Consultation fee for ${consultation.id}`
+        });
+        if (walletError) console.error("Wallet deduction error:", walletError);
+      }
+    } catch (err) {
+      console.error("Error calculating or deducting fee:", err);
+    }
+
     await supabase.from('consultations').update({ status: 'COMPLETED', ended_at: endedAt }).eq('id', id);
     
     setConsultation(prev => ({...prev, status: 'COMPLETED', ended_at: endedAt}));
     toast.success("Consultation completed!");
-    if (userRole === 'petOwner') setShowRating(true);
   };
 
-  const handleRatingSubmit = async (rating, feedback) => {
-    try {
-      // In a real app, you'd ensure the 'rating' and 'feedback' columns exist in Supabase
-      await supabase.from('consultations').update({ rating, feedback, rated: true }).eq('id', id);
-    } catch (err) {
-      console.error(err);
-    }
-    setShowRating(false);
-    toast.success("Thank you for your feedback!");
-    navigate('/pet-owner/dashboard');
-  };
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
@@ -196,16 +201,6 @@ export default function ChatPage() {
           />
         </div>
       </div>
-      
-      {showRating && (
-        <RatingModal 
-          onSubmit={handleRatingSubmit} 
-          onClose={() => {
-            setShowRating(false);
-            navigate('/pet-owner/dashboard');
-          }} 
-        />
-      )}
     </div>
   );
 }
