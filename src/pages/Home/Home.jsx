@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { PawPrint, Video, Pill, Apple, HeartPulse, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DoctorsPanel from '../../components/DoctorsPanel';
@@ -7,8 +8,27 @@ import FAQSection from '../../components/FAQSection';
 import BlogSection from '../../components/BlogSection';
 
 export default function Home() {
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "VeterinaryCare",
+    "name": "Joeyverse",
+    "description": "24/7 Online Vet Consultations & Pet Care",
+    "url": "https://joeyverse.com",
+    "sameAs": [
+      "https://joeyuniverse.com"
+    ]
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 sm:space-y-20 pt-20 sm:pt-28 pb-10">
+      <Helmet>
+        <title>Joeyverse | 24/7 Online Vet Consultations & Pet Care</title>
+        <meta name="description" content="Connect with certified veterinarians instantly. Joeyverse offers 24/7 online video consultations, vet chats, and pet care advice." />
+        <meta name="keywords" content="joeyverse, joeyuniverse, joey, verse, universe, online vet, 24/7 pet care, animal doctor, virtual veterinarian, pet health" />
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
+      </Helmet>
 
       {/* ==========================================
          HERO SECTION (Centered layout based on Vetic mockup structure)

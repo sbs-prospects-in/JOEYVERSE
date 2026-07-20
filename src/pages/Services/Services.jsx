@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Video, MessageSquare, Pill, Apple, Award, Star } from 'lucide-react';
 
 export default function Services() {
@@ -18,6 +19,18 @@ export default function Services() {
       window.scrollTo(0, 0);
     }
   }, [hash]);
+
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Veterinary Services",
+    "provider": {
+      "@type": "VeterinaryCare",
+      "name": "Joeyverse"
+    },
+    "description": "24/7 video consultations, instant vet chat, digital refills, diet nutrition, and behavior tips for your pets.",
+    "areaServed": "Global"
+  };
 
   const services = [
     { 
@@ -75,7 +88,15 @@ export default function Services() {
 
   return (
     <div className="w-full flex flex-col">
-      
+      <Helmet>
+        <title>Our Services | Joeyverse Vet Care</title>
+        <meta name="description" content="Explore Joeyverse's veterinary services: 24/7 video consults, instant chat, digital prescriptions, diet planning, and pet behavior advice." />
+        <meta name="keywords" content="joeyverse, joeyuniverse, joey, verse, universe, online vet consultation, pet behavior tips, digital pet prescriptions, pet diet nutrition" />
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
+      </Helmet>
+
       {/* ==========================================
          SCROLL-REVEAL HERO SLIDES (Bob Ross / Parallax Style)
          ========================================== */}
