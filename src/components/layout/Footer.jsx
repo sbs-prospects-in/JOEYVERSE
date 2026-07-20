@@ -6,156 +6,7 @@ import {
   BookOpen, MessageSquare, Heart, Twitter
 } from 'lucide-react';
 
-function TransparentImage({ src, alt, className }) {
-  const [transparentSrc, setTransparentSrc] = React.useState(src);
 
-  React.useEffect(() => {
-    const img = new Image();
-    img.src = src;
-    img.onload = () => {
-      try {
-        const threshold = 240;
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        const width = canvas.width;
-        const height = canvas.height;
-        
-        const getIndex = (x, y) => (y * width + x) * 4;
-        const queue = [];
-        const visited = new Uint8Array(width * height);
-        
-        const corners = [
-          [0, 0],
-          [width - 1, 0],
-          [0, height - 1],
-          [width - 1, height - 1]
-        ];
-        
-        for (const [cx, cy] of corners) {
-          const idx = getIndex(cx, cy);
-          if (data[idx] > threshold && data[idx + 1] > threshold && data[idx + 2] > threshold) {
-            queue.push([cx, cy]);
-            visited[cy * width + cx] = 1;
-          }
-        }
-        
-        while (queue.length > 0) {
-          const [x, y] = queue.shift();
-          const idx = getIndex(x, y);
-          data[idx + 3] = 0; // Set Alpha = 0 (Transparent)
-          
-          const neighbors = [
-            [x + 1, y],
-            [x - 1, y],
-            [x, y + 1],
-            [x, y - 1]
-          ];
-          
-          for (const [nx, ny] of neighbors) {
-            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-              const nIdx = ny * width + nx;
-              if (!visited[nIdx]) {
-                const pixelIdx = getIndex(nx, ny);
-                if (data[pixelIdx] > threshold && data[pixelIdx + 1] > threshold && data[pixelIdx + 2] > threshold) {
-                  queue.push([nx, ny]);
-                  visited[nIdx] = 1;
-                }
-              }
-            }
-          }
-        }
-        
-        ctx.putImageData(imgData, 0, 0);
-        setTransparentSrc(canvas.toDataURL());
-      } catch (err) {
-        console.error("Transparency error:", err);
-      }
-    };
-  }, [src]);
-
-  return <img src={transparentSrc} alt={alt} className={className} />;
-}
-
-function SittingCatSVG({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Tail */}
-      <path d="M78 95 C85 95 90 90 90 80 C90 70 85 62 76 62 C73 62 71 65 71 68 C71 72 74 74 76 74 C80 74 82 78 82 82 C82 86 78 89 74 89 C70 89 67 87 66 84" stroke="#e07e32" strokeWidth="6" strokeLinecap="round" />
-      <path d="M78 95 C85 95 90 90 90 80 C90 70 85 62 76 62 C73 62 71 65 71 68 C71 72 74 74 76 74 C80 74 82 78 82 82 C82 86 78 89 74 89 C70 89 67 87 66 84" stroke="#f19e58" strokeWidth="4" strokeLinecap="round" />
-
-      {/* Back feet/body base */}
-      <ellipse cx="44" cy="98" rx="14" ry="8" fill="#e07e32" />
-      <ellipse cx="76" cy="98" rx="14" ry="8" fill="#e07e32" />
-      <ellipse cx="44" cy="98" rx="13" ry="7" fill="#f19e58" />
-      <ellipse cx="76" cy="98" rx="13" ry="7" fill="#f19e58" />
-
-      {/* Main Body */}
-      <path d="M42 96 C38 80 44 55 60 55 C76 55 82 80 78 96 Z" fill="#f19e58" />
-      {/* Chest/Tummy white patch */}
-      <path d="M50 72 C45 82 52 96 60 96 C68 96 75 82 70 72 C66 66 54 66 50 72 Z" fill="#fff8f2" />
-
-      {/* Front Paws */}
-      <rect x="49" y="88" width="8" height="14" rx="4" fill="#fff8f2" stroke="#d58343" strokeWidth="1" />
-      <rect x="63" y="88" width="8" height="14" rx="4" fill="#fff8f2" stroke="#d58343" strokeWidth="1" />
-
-      {/* Collar */}
-      <path d="M43 56 C50 62 70 62 77 56" stroke="#4a90e2" strokeWidth="4" strokeLinecap="round" />
-      {/* Bell / Fish charm */}
-      <circle cx="60" cy="60" r="4.5" fill="#f5a623" />
-      <path d="M60 60 L64 57 L64 63 Z" fill="#f5a623" />
-
-      {/* Ears */}
-      {/* Left Ear */}
-      <path d="M36 42 L25 18 C25 18 36 24 45 28 Z" fill="#d58343" />
-      <path d="M37 41 L28 21 C28 21 37 26 44 30 Z" fill="#f19e58" />
-      <path d="M37 39 L31 25 C31 25 37 29 42 32 Z" fill="#fbc7cd" /> {/* Inner Pink */}
-
-      {/* Right Ear */}
-      <path d="M84 42 L95 18 C95 18 84 24 75 28 Z" fill="#d58343" />
-      <path d="M83 41 L92 21 C92 21 83 26 76 30 Z" fill="#f19e58" />
-      <path d="M83 39 L89 25 C89 25 83 29 78 32 Z" fill="#fbc7cd" /> {/* Inner Pink */}
-
-      {/* Head */}
-      <ellipse cx="60" cy="42" rx="26" ry="21" fill="#f19e58" stroke="#d58343" strokeWidth="1.5" />
-      
-      {/* White face patches */}
-      <path d="M37 46 C37 57 47 62 60 62 C73 62 83 57 83 46 C83 42 73 38 60 38 C47 38 37 42 37 46 Z" fill="#fff8f2" />
-
-      {/* Stripes on Head */}
-      <path d="M60 21 L60 27" stroke="#e07e32" strokeWidth="3.5" strokeLinecap="round" />
-      <path d="M53 22 L55 27" stroke="#e07e32" strokeWidth="3" strokeLinecap="round" />
-      <path d="M67 22 L65 27" stroke="#e07e32" strokeWidth="3" strokeLinecap="round" />
-      
-      {/* Side whiskers stripes */}
-      <path d="M36 43 L42 44" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M35 48 L40 48" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M84 43 L78 44" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M85 48 L80 48" stroke="#e07e32" strokeWidth="2.5" strokeLinecap="round" />
-
-      {/* Eyes */}
-      {/* Left Eye: Normal circle */}
-      <circle cx="48" cy="46" r="3.5" fill="#2d1c13" />
-      <circle cx="47" cy="45" r="1" fill="#ffffff" /> {/* Eye highlight */}
-      
-      {/* Right Eye: Winking curve */}
-      <path d="M69 46 Q73 42 77 46" stroke="#2d1c13" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-
-      {/* Cheeks (pink blush) */}
-      <ellipse cx="42" cy="51" rx="3.5" ry="2" fill="#ff8b94" opacity="0.6" />
-      <ellipse cx="78" cy="51" rx="3.5" ry="2" fill="#ff8b94" opacity="0.6" />
-
-      {/* Nose & Mouth */}
-      <polygon points="59,50 61,50 60,51.5" fill="#2d1c13" />
-      <path d="M57 53 Q60 55 60 53 Q60 55 63 53" stroke="#2d1c13" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-    </svg>
-  );
-}
 
 export default function Footer() {
   return (
@@ -214,11 +65,11 @@ export default function Footer() {
             </div>
             
             {/* Cartoon Pets Sitting Side-by-Side */}
-            <div className="flex items-end gap-1 mt-4 relative h-32 w-max select-none bg-white/70 px-4 pt-4 pb-2 rounded-[2rem] shadow-sm border border-white/80 backdrop-blur-md">
-              <TransparentImage src="/images/cartoon-dog.png" alt="Cartoon Dog" className="h-28 object-contain drop-shadow-sm" />
-              <SittingCatSVG className="h-20 w-20 object-contain ml-[-20px] pb-1 shrink-0 drop-shadow-sm" />
+            <div className="flex items-end gap-1 mt-4 relative h-28 w-max select-none">
+              <img src="/images/cartoon-dog-transparent.png" alt="Cartoon Dog" className="h-28 object-contain" />
+              <img src="/images/sitting-cat.svg" alt="Cartoon Cat" className="h-20 w-20 object-contain ml-[-20px] pb-1 shrink-0" />
               {/* Heart bubble */}
-              <div className="absolute top-2 left-28 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
+              <div className="absolute top-4 left-24 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
                 <Heart className="w-3 h-3 fill-current text-white" />
               </div>
             </div>
