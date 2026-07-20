@@ -78,7 +78,7 @@ export default function Footer() {
               <div 
                 className="h-20 w-20 ml-[-20px] pb-1 shrink-0" 
                 style={{ 
-                  backgroundImage: "url('/images/sitting-cat.svg')", 
+                  backgroundImage: "url('/images/sitting-cat.png')", 
                   backgroundSize: "contain", 
                   backgroundRepeat: "no-repeat",
                   backgroundPosition: "bottom"
