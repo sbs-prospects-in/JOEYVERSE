@@ -35,7 +35,12 @@ import {
   PhoneCall,
   PawPrint,
   User,
+  Edit3,
 } from "lucide-react";
+import NotificationBell from "../../../components/ui/NotificationBell";
+
+// Helper: generate short human-readable ID like USR-01, USR-02
+const shortId = (shortIdNum, prefix) => `${prefix}-${String(shortIdNum || 0).padStart(2, '0')}`;
 
 export default function DoctorDashboard() {
   const { user, logout } = useAuthStore();
@@ -372,13 +377,29 @@ export default function DoctorDashboard() {
       )
       .subscribe();
 
-    // Fallback polling every 5 seconds just in case Realtime isn't fully configured on the table
+    // Listen to doctor_profiles status changes (Realtime - for own status sync)
+    const statusChannel = supabase
+      .channel("doctor_status_self")
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "doctor_profiles",
+        filter: `id=eq.${user.id}`,
+      }, (payload) => {
+        if (payload.new) {
+          setIsOnline(payload.new.status === "ONLINE");
+        }
+      })
+      .subscribe();
+
+    // Fallback polling every 30 seconds
     const pollInterval = setInterval(() => {
       fetchDashboardData();
     }, 30000);
 
     return () => {
       supabase.removeChannel(queueChannel);
+      supabase.removeChannel(statusChannel);
       clearInterval(pollInterval);
     };
   }, [user]);
@@ -582,6 +603,9 @@ export default function DoctorDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Notification Bell */}
+              <NotificationBell />
+
               {/* Elegant Simple Status Toggle */}
               <button
                 onClick={toggleAvailability}

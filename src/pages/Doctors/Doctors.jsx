@@ -161,6 +161,25 @@ export default function Doctors() {
       toast.error("Doctor is currently offline or busy.");
       return;
     }
+
+    // Check if user has any pets registered
+    if (myPets.length === 0) {
+      toast((t) => (
+        <span className="flex items-center gap-3">
+          <span>Please add a pet first before consulting a doctor.</span>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              navigate('/pet-owner/dashboard');
+            }}
+            className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-700 whitespace-nowrap"
+          >
+            Add Pet
+          </button>
+        </span>
+      ), { duration: 5000, icon: '🐾' });
+      return;
+    }
     
     try {
       const { data: walletData } = await supabase.from('wallets').select('balance').eq('user_id', user.id).maybeSingle();
@@ -179,6 +198,7 @@ export default function Doctors() {
     setSelectedDoctor(doc);
     setIsIntakeOpen(true);
   };
+
 
   const startCall = async (e) => {
     e.preventDefault();

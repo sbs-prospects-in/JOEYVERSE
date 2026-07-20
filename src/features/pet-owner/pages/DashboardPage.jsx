@@ -18,11 +18,20 @@ import {
   ChevronDown,
   User,
   Trash2,
+  Edit3,
+  AlertCircle,
 } from "lucide-react";
 import { supabase } from "../../auth/api/supabase";
 import toast, { Toaster } from "react-hot-toast";
 import StripeCheckoutModal from "../components/StripeCheckoutModal";
 import Cropper from "react-easy-crop";
+import NotificationBell from "../../../components/ui/NotificationBell";
+
+// Helper: generate short human-readable ID like PET-01, PET-02
+const shortId = (shortIdNum, prefix) => `${prefix}-${String(shortIdNum || 0).padStart(2, '0')}`;
+// Helper: generate user short ID from index
+const userShortId = (id, prefix) => `${prefix}-${String(id || '00').slice(0, 2).toUpperCase()}`;
+
 
 // Helper for cropping image
 const getCroppedImg = async (imageSrc, pixelCrop) => {
@@ -332,6 +341,7 @@ export default function PetOwnerDashboard() {
           species: newPet.species,
           breed: newPet.breed,
           age: newPet.age ? parseInt(newPet.age) : null,
+          age_unit: newPet.ageUnit || 'Years',
         })
         .select("id");
 
@@ -345,7 +355,7 @@ export default function PetOwnerDashboard() {
         if (petImageFile && insertedPet) {
           try {
             const uploadPromise = supabase.storage
-              .from("pet-profiles")
+              .from("pet-images")
               .upload(`pet_profile_${insertedPet.id}`, petImageFile, {
                 upsert: true,
               });
@@ -363,7 +373,15 @@ export default function PetOwnerDashboard() {
               timeoutPromise,
             ]);
 
-            if (uploadResult?.error) {
+            if (!uploadResult?.error) {
+              // Get public URL and update pet record
+              const { data: urlData } = supabase.storage
+                .from('pet-images')
+                .getPublicUrl(`pet_profile_${insertedPet.id}`);
+              if (urlData?.publicUrl) {
+                await supabase.from('pets').update({ avatar_url: urlData.publicUrl }).eq('id', insertedPet.id);
+              }
+            } else {
               console.error("Supabase upload error:", uploadResult.error);
               toast.error("Companion saved, but image upload failed.");
             }
@@ -472,7 +490,9 @@ export default function PetOwnerDashboard() {
                 className="h-4 md:h-5 w-auto object-contain -translate-y-0.5 ml-1 hidden sm:block"
               />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <NotificationBell />
               <div className="relative group">
                 <button className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors focus:outline-none">
                   <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
@@ -846,7 +866,7 @@ export default function PetOwnerDashboard() {
                     </div>
                   ) : (
                     myPets.map((pet, i) => {
-                      const uniqueId = `PET-${pet.id.substring(0, 4).toUpperCase()}`;
+                      const petShortId = pet.short_id ? shortId(pet.short_id, 'PET') : `PET-${String(i+1).padStart(2,'0')}`;
                       return (
                         <div
                           key={pet.id}
@@ -863,15 +883,15 @@ export default function PetOwnerDashboard() {
                                     : "bg-teal-500"
                               }`}
                             >
-                              <img
-                                src={`https://tkvcvjccsqmjtyirjwdd.supabase.co/storage/v1/object/public/pet-profiles/pet_profile_${pet.id}`}
-                                alt={pet.name}
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                }}
-                                className="w-full h-full object-cover"
-                              />
-                              <span className="absolute">{pet.name[0]}</span>
+                              {pet.avatar_url ? (
+                                <img
+                                  src={pet.avatar_url}
+                                  alt={pet.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span>{pet.name[0]}</span>
+                              )}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
@@ -879,11 +899,11 @@ export default function PetOwnerDashboard() {
                                   {pet.name}
                                 </p>
                                 <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                  {uniqueId}
+                                  {petShortId}
                                 </span>
                               </div>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                {pet.species} • {pet.age} yrs
+                                {pet.species} • {pet.age} {pet.age_unit || 'yrs'}
                               </p>
                             </div>
                           </div>
@@ -934,7 +954,7 @@ export default function PetOwnerDashboard() {
                   </span>
                 </div>
                 <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest mb-2 shadow-sm border border-slate-200">
-                  PET-{selectedPet.id.substring(0, 4).toUpperCase()}
+                  {selectedPet.short_id ? shortId(selectedPet.short_id, 'PET') : `PET-${selectedPet.id.substring(0,4).toUpperCase()}`}
                 </span>
                 <h3 className="text-3xl font-black text-slate-900">
                   {selectedPet.name.toLowerCase()}
@@ -950,7 +970,7 @@ export default function PetOwnerDashboard() {
                       Age
                     </div>
                     <div className="text-lg font-black text-slate-800">
-                      {selectedPet.age} {selectedPet.age === 1 ? "yr" : "yrs"}
+                      {selectedPet.age} {selectedPet.age_unit || (selectedPet.age === 1 ? 'yr' : 'yrs')}
                     </div>
                   </div>
                   <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 text-center flex flex-col justify-center">

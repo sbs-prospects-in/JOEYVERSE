@@ -976,13 +976,23 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             
             <button 
               onClick={async () => {
+                if (rating === 0) { toast.error("Please select a star rating"); return; }
                 setIsSubmittingRating(true);
                 try {
+                  // First try to update with both rating and feedback
                   const { error: ratingError } = await supabase.from('consultations').update({
                     rating: rating,
-                    review_text: reviewText
+                    feedback: reviewText || null,
                   }).eq('id', consultation.id);
-                  if (ratingError) throw ratingError;
+                  
+                  if (ratingError) {
+                    // If review_text column doesn't exist, try with just rating
+                    console.warn("Rating update error:", ratingError);
+                    const { error: ratingOnlyError } = await supabase.from('consultations').update({
+                      rating: rating,
+                    }).eq('id', consultation.id);
+                    if (ratingOnlyError) throw ratingOnlyError;
+                  }
 
                   // Update Doctor Profile Average Rating
                   const { data: pastConsultations } = await supabase
@@ -991,23 +1001,21 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                     .eq('doctor_id', consultation.doctor_id)
                     .not('rating', 'is', null);
                     
-                  if (pastConsultations) {
-                    // Include the new rating in the aggregation
-                    const totalRatings = pastConsultations.reduce((acc, curr) => acc + curr.rating, 0) + rating;
-                    const count = pastConsultations.length + 1;
-                    const newAvg = (totalRatings / count).toFixed(1);
+                  if (pastConsultations && pastConsultations.length > 0) {
+                    const allRatings = [...pastConsultations.map(c => c.rating), rating];
+                    const newAvg = (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(2);
                     
                     await supabase.from('doctor_profiles').update({
                       rating: parseFloat(newAvg)
                     }).eq('id', consultation.doctor_id);
                   }
 
-                  toast.success("Thank you for your feedback!");
+                  toast.success("Thank you for your feedback! ⭐");
                   setShowRatingModal(false);
                   setHasRated(true);
                 } catch (err) {
-                  console.error(err);
-                  toast.error("Failed to submit rating.");
+                  console.error("Feedback error:", err);
+                  toast.error("Could not submit feedback. Please try again.");
                 } finally {
                   setIsSubmittingRating(false);
                 }
@@ -1017,6 +1025,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
             >
               {isSubmittingRating ? 'Submitting...' : 'Submit Review'}
             </button>
+
           </div>
         </div>
       )}
