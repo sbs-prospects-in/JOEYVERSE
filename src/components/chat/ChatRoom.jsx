@@ -1316,30 +1316,32 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
 
       {/* Media Viewer Modal */}
       {selectedMedia && (
-        <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden rounded-3xl">
+        <div 
+          className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden rounded-3xl"
+          onClick={() => setSelectedMedia(null)}
+        >
           <button 
-            onClick={() => setSelectedMedia(null)}
-            className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-50 p-2 bg-black/50 rounded-full"
+            onClick={(e) => { e.stopPropagation(); setSelectedMedia(null); }}
+            className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-[110] p-2 bg-black/50 rounded-full cursor-pointer"
           >
             <X size={20} />
           </button>
           
-          {/* Click outside to close */}
-          <div className="absolute inset-0 z-40 cursor-pointer" onClick={() => setSelectedMedia(null)} />
-          
-          <div className="relative z-50 w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200">
+          <div className="relative z-50 w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-200 pointer-events-none">
             {selectedMedia.type === 'image' ? (
               <img 
                 src={selectedMedia.url} 
                 alt="Enlarged media" 
-                className="max-w-full max-h-full object-contain shadow-2xl select-none"
+                className="max-w-full max-h-full object-contain shadow-2xl select-none pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <video 
                 src={selectedMedia.url} 
                 controls
                 autoPlay
-                className="max-w-full max-h-full shadow-2xl bg-black"
+                className="max-w-full max-h-full shadow-2xl bg-black pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
               />
             )}
           </div>
