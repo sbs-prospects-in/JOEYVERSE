@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useBlocker } from 'react-router-dom';
+import { useBlocker, useNavigate } from 'react-router-dom';
 import { supabase } from '../../features/auth/api/supabase';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../features/auth/store/authStore';
@@ -74,6 +74,7 @@ const VoiceMessagePlayer = ({ src, duration: initialDuration }) => {
 };
 
 export default function ChatRoom({ consultation, currentUserId, otherPersonName }) {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -379,7 +380,13 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       const timer = setTimeout(() => setShowRatingModal(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, [consultationStatus, userRole, consultation, endTime, user?.id, hasRated]);
+
+    // Auto-redirect doctor when completed
+    if (consultationStatus === 'COMPLETED' && userRole === 'doctor') {
+      const timer = setTimeout(() => navigate('/doctor/dashboard'), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [consultationStatus, userRole, consultation, endTime, user?.id, hasRated, navigate]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -942,7 +949,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         <div className="absolute inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full animate-in zoom-in-95 duration-200 relative">
             <button 
-              onClick={() => setShowRatingModal(false)}
+              onClick={() => { setShowRatingModal(false); navigate('/pet-owner/dashboard'); }}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <X size={20} />
@@ -1013,6 +1020,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                   toast.success("Thank you for your feedback! ⭐");
                   setShowRatingModal(false);
                   setHasRated(true);
+                  setTimeout(() => navigate('/pet-owner/dashboard'), 500);
                 } catch (err) {
                   console.error("Feedback error:", err);
                   toast.error("Could not submit feedback. Please try again.");

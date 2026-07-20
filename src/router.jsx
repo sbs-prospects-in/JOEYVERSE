@@ -20,6 +20,8 @@ import ChatPage from "./pages/shared/ChatPage";
 import Blogs from "./pages/Blogs/Blogs";
 import BlogPost from "./pages/Blogs/BlogPost";
 import FAQs from "./pages/FAQs/FAQs";
+import PrivacyPolicy from "./pages/PrivacyPolicy/PrivacyPolicy";
+import TermsOfUse from "./pages/TermsOfUse/TermsOfUse";
 import { useAuthStore } from "./features/auth/store/authStore";
 
 // Inline protected route component
@@ -125,6 +127,8 @@ export const router = createBrowserRouter([
         )
       },
       { path: "/admin-setup", element: <AdminSetup /> },
+      { path: "/privacy-policy", element: <PrivacyPolicy /> },
+      { path: "/terms-of-use", element: <TermsOfUse /> },
       { path: "*", element: <NotFound /> },
     ],
   },

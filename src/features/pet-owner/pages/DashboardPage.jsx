@@ -428,6 +428,34 @@ export default function PetOwnerDashboard() {
     }
   };
 
+  const [isEditingPet, setIsEditingPet] = useState(false);
+  const [editPetData, setEditPetData] = useState({});
+
+  const handleSavePet = async () => {
+    if (!selectedPet?.id || !editPetData.name?.trim()) {
+      toast.error("Pet name is required");
+      return;
+    }
+    const { error } = await supabase.from("pets").update({
+      name: editPetData.name.trim(),
+      species: editPetData.species || selectedPet.species,
+      breed: editPetData.breed || selectedPet.breed,
+      age: editPetData.age !== undefined ? parseInt(editPetData.age) || null : selectedPet.age,
+      age_unit: editPetData.age_unit || selectedPet.age_unit || 'Years',
+    }).eq("id", selectedPet.id);
+
+    if (!error) {
+      toast.success("Pet updated!");
+      setIsEditingPet(false);
+      setSelectedPet(prev => ({...prev, ...editPetData, name: editPetData.name.trim()}));
+      fetchPets();
+    } else {
+      toast.error("Failed to update pet: " + error.message);
+    }
+  };
+
+
+
   const handlePaymentSuccess = async (amountStr) => {
     if (!user?.id) return;
 
@@ -933,7 +961,10 @@ export default function PetOwnerDashboard() {
                 <Trash2 size={16} />
               </button>
               <button
-                onClick={() => setSelectedPet(null)}
+                onClick={() => {
+                  setIsEditingPet(false);
+                  setSelectedPet(null);
+                }}
                 className="absolute top-6 right-6 w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               >
                 <X size={16} />
@@ -941,58 +972,156 @@ export default function PetOwnerDashboard() {
 
               <div className="flex flex-col items-center text-center mt-4">
                 <div className="w-24 h-24 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-4xl mb-3 shadow-sm border-[6px] border-white ring-1 ring-slate-100 overflow-hidden relative">
-                  <img
-                    src={`https://tkvcvjccsqmjtyirjwdd.supabase.co/storage/v1/object/public/pet-profiles/pet_profile_${selectedPet.id}`}
-                    alt={selectedPet.name}
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                    }}
-                    className="w-full h-full object-cover z-10"
-                  />
-                  <span className="absolute z-0">
-                    {selectedPet.name[0].toLowerCase()}
-                  </span>
+                  {selectedPet.avatar_url ? (
+                    <img
+                      src={selectedPet.avatar_url}
+                      alt={selectedPet.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{selectedPet.name[0].toLowerCase()}</span>
+                  )}
                 </div>
                 <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest mb-2 shadow-sm border border-slate-200">
                   {selectedPet.short_id ? shortId(selectedPet.short_id, 'PET') : `PET-${selectedPet.id.substring(0,4).toUpperCase()}`}
                 </span>
-                <h3 className="text-3xl font-black text-slate-900">
-                  {selectedPet.name.toLowerCase()}
-                </h3>
-                <p className="text-slate-500 text-sm mt-2 flex items-center justify-center gap-1.5 font-medium">
-                  <PawPrint size={14} className="text-slate-400" />{" "}
-                  {selectedPet.species} • {selectedPet.breed || "Mixed"}
-                </p>
 
-                <div className="grid grid-cols-2 gap-4 w-full mt-8">
-                  <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 text-center flex flex-col justify-center">
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                      Age
+                {isEditingPet ? (
+                  <div className="w-full text-left mt-2 space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Name</label>
+                      <input
+                        value={editPetData.name ?? selectedPet.name}
+                        onChange={e => setEditPetData(p => ({...p, name: e.target.value}))}
+                        className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
-                    <div className="text-lg font-black text-slate-800">
-                      {selectedPet.age} {selectedPet.age_unit || (selectedPet.age === 1 ? 'yr' : 'yrs')}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Species</label>
+                        <select
+                          value={editPetData.species ?? selectedPet.species}
+                          onChange={e => setEditPetData(p => ({...p, species: e.target.value}))}
+                          className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option>Dog</option>
+                          <option>Cat</option>
+                          <option>Bird</option>
+                          <option>Rabbit</option>
+                          <option>Fish</option>
+                          <option>Reptile</option>
+                          <option>Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Breed</label>
+                        <input
+                          value={editPetData.breed ?? selectedPet.breed ?? ''}
+                          onChange={e => setEditPetData(p => ({...p, breed: e.target.value}))}
+                          className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Mixed"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Age</label>
+                        <input
+                          type="number" min="0" max="40"
+                          value={editPetData.age ?? selectedPet.age ?? ''}
+                          onChange={e => setEditPetData(p => ({...p, age: e.target.value}))}
+                          className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Unit</label>
+                        <select
+                          value={editPetData.age_unit ?? selectedPet.age_unit ?? 'Years'}
+                          onChange={e => setEditPetData(p => ({...p, age_unit: e.target.value}))}
+                          className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option>Years</option>
+                          <option>Months</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => setIsEditingPet(false)}
+                        className="flex-1 border border-slate-200 text-slate-600 font-bold py-3 rounded-2xl hover:bg-slate-50 transition-colors text-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSavePet}
+                        className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-2xl hover:bg-blue-700 transition-colors text-sm shadow-md"
+                      >
+                        Save Changes
+                      </button>
                     </div>
                   </div>
-                  <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 text-center flex flex-col justify-center">
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                      ID
-                    </div>
-                    <div className="text-xs font-bold text-slate-700 break-all">
-                      #{String(selectedPet.id).split("-")[0]}
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <h3 className="text-3xl font-black text-slate-900">
+                      {selectedPet.name.toLowerCase()}
+                    </h3>
+                    <p className="text-slate-500 text-sm mt-2 flex items-center justify-center gap-1.5 font-medium">
+                      <PawPrint size={14} className="text-slate-400" />{" "}
+                      {selectedPet.species} • {selectedPet.breed || "Mixed"}
+                    </p>
 
-                <button
-                  onClick={() => setSelectedPet(null)}
-                  className="w-full mt-8 bg-slate-50 border border-slate-100 hover:bg-slate-100 text-slate-700 font-bold py-3.5 rounded-2xl transition-colors shadow-sm"
-                >
-                  Close
-                </button>
+                    <div className="grid grid-cols-2 gap-4 w-full mt-8">
+                      <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 text-center flex flex-col justify-center">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                          Age
+                        </div>
+                        <div className="text-lg font-black text-slate-800">
+                          {selectedPet.age} {selectedPet.age_unit || (selectedPet.age === 1 ? 'yr' : 'yrs')}
+                        </div>
+                      </div>
+                      <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 text-center flex flex-col justify-center">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                          Species
+                        </div>
+                        <div className="text-sm font-bold text-slate-700">
+                          {selectedPet.species}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 w-full mt-4">
+                      <button
+                        onClick={() => {
+                          setIsEditingPet(true);
+                          setEditPetData({
+                            name: selectedPet.name,
+                            species: selectedPet.species,
+                            breed: selectedPet.breed || '',
+                            age: selectedPet.age || '',
+                            age_unit: selectedPet.age_unit || 'Years',
+                          });
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 font-bold py-3.5 rounded-2xl hover:bg-blue-100 transition-colors shadow-sm text-sm"
+                      >
+                        <Edit3 size={14} /> Edit Pet
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingPet(false);
+                          setSelectedPet(null);
+                        }}
+                        className="flex-1 bg-slate-50 border border-slate-100 hover:bg-slate-100 text-slate-700 font-bold py-3.5 rounded-2xl transition-colors shadow-sm text-sm"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
         )}
+
 
         {/* Add Pet Modal */}
         {isAddPetOpen && (

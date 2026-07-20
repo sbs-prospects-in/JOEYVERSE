@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   Star, Award, MessageCircle, X, 
-  ArrowLeft, Activity, ShieldCheck, Zap, User, Clock, PhoneCall, ChevronDown
+  ArrowLeft, Activity, ShieldCheck, Zap, User, Clock, PhoneCall, ChevronDown, Heart
 } from 'lucide-react';
 
 export default function Doctors() {
@@ -23,6 +23,54 @@ export default function Doctors() {
   // Pet Selection State
   const [myPets, setMyPets] = useState([]);
   const [selectedPetId, setSelectedPetId] = useState('');
+
+  // Wishlist State
+  const [wishlistIds, setWishlistIds] = useState(new Set());
+
+  // Fetch wishlists
+  useEffect(() => {
+    if (user?.id) {
+      supabase.from('wishlists').select('doctor_id').eq('user_id', user.id)
+        .then(({ data }) => {
+          if (data) {
+            setWishlistIds(new Set(data.map(w => w.doctor_id)));
+          }
+        });
+    }
+  }, [user]);
+
+  const toggleWishlist = async (doctorId) => {
+    if (!user) {
+      toast.error("Please login to save to wishlist");
+      return;
+    }
+    
+    const isWishlisted = wishlistIds.has(doctorId);
+    if (isWishlisted) {
+      const { error } = await supabase.from('wishlists').delete().match({ user_id: user.id, doctor_id: doctorId });
+      if (!error) {
+        setWishlistIds(prev => {
+          const next = new Set(prev);
+          next.delete(doctorId);
+          return next;
+        });
+        toast.success("Removed from wishlist");
+      }
+    } else {
+      const { error } = await supabase.from('wishlists').insert({ user_id: user.id, doctor_id: doctorId });
+      if (!error || error.code === '23505') { // 23505 is unique violation, effectively meaning it's already there
+        setWishlistIds(prev => {
+          const next = new Set(prev);
+          next.add(doctorId);
+          return next;
+        });
+        if (!error) toast.success("Saved to wishlist");
+      } else {
+        toast.error("Failed to save to wishlist");
+      }
+    }
+  };
+
 
   // Fetch user's pets
   useEffect(() => {
@@ -297,7 +345,7 @@ export default function Doctors() {
                 
                 <div className="p-6 pb-0">
                   <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden border border-slate-100 shadow-sm shrink-0">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden border border-slate-100 shadow-sm shrink-0 relative">
                       <img 
                         src={doc.img} 
                         alt={doc.name} 
@@ -305,6 +353,13 @@ export default function Doctors() {
                         onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400'; }} 
                       />
                     </div>
+                    <button 
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(doc.id); }}
+                      className="absolute top-4 right-4 z-30 p-2 rounded-full bg-white/80 backdrop-blur-sm border border-slate-100 shadow-sm hover:bg-white hover:scale-110 transition-all text-rose-500"
+                    >
+                      <Heart size={16} fill={wishlistIds.has(doc.id) ? "currentColor" : "none"} strokeWidth={wishlistIds.has(doc.id) ? 0 : 2} />
+                    </button>
+
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       {doc.status === 'ONLINE' ? (
                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5">
