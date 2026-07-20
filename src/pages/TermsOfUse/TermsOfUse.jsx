@@ -112,9 +112,9 @@ export default function TermsOfUse() {
         <div className="bg-slate-50 rounded-lg p-6 border border-slate-100 mb-12">
           <ul className="text-slate-600 space-y-2">
             <li><strong>Company Name:</strong> Joeyverse</li>
-            <li><strong>Office Address:</strong> [Your Office Address]</li>
-            <li><strong>Email:</strong> [Your Email Address]</li>
-            <li><strong>Phone:</strong> [Your Contact Number]</li>
+            <li><strong>Office Address:</strong> 1003, Span Trade Center, Paldi, Ahmedabad</li>
+            <li><strong>Email:</strong> <a href="mailto:joeyverse2025@gmail.com" className="text-blue-600 hover:underline">joeyverse2025@gmail.com</a></li>
+            <li><strong>Phone:</strong> +91 9081353523</li>
             <li><strong>Website:</strong> <a href="https://www.joeyuniverse.com" className="text-blue-600 hover:underline">https://www.joeyuniverse.com</a></li>
           </ul>
         </div>

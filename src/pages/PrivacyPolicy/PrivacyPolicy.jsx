@@ -132,9 +132,9 @@ export default function PrivacyPolicy() {
           <p className="text-slate-800 font-bold mb-2">Joeyverse</p>
           <ul className="text-slate-600 space-y-2">
             <li><strong>Website:</strong> <a href="https://www.joeyuniverse.com" className="text-blue-600 hover:underline">https://www.joeyuniverse.com</a></li>
-            <li><strong>Email:</strong> [Your Email Address]</li>
-            <li><strong>Phone:</strong> [Your Contact Number]</li>
-            <li><strong>Address:</strong> [Your Office Address]</li>
+            <li><strong>Email:</strong> <a href="mailto:joeyverse2025@gmail.com" className="text-blue-600 hover:underline">joeyverse2025@gmail.com</a></li>
+            <li><strong>Phone:</strong> +91 9081353523</li>
+            <li><strong>Address:</strong> 1003, Span Trade Center, Paldi, Ahmedabad</li>
           </ul>
         </div>
       </div>
