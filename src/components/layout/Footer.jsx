@@ -318,9 +318,14 @@ export default function Footer() {
 
         {/* BOTTOM BAR */}
         <div className="pt-8 border-t border-slate-900/10 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-xs text-slate-500">
-            © 2026 Joeyverse. All rights reserved.
-          </p>
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <p className="text-xs text-slate-500">
+              © 2026 Joeyverse. All rights reserved.
+            </p>
+            <p className="text-xs text-slate-500">
+              Managed by <a href="https://www.sbsquantum.com/" target="_blank" rel="noopener noreferrer" className="text-rose-600 hover:underline font-medium">SBS Quantum</a>
+            </p>
+          </div>
           
           <div className="flex gap-2">
             <a href="#" className="w-9 h-9 rounded-full bg-slate-900/5 flex items-center justify-center text-slate-700 hover:bg-slate-900/10 transition-colors"><Instagram className="w-4 h-4" /></a>
