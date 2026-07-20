@@ -196,33 +196,21 @@ export default function Home() {
           borderBottom: '1px solid #e2e8f0',
         }}>
           {[
-            { label: 'Video consultations', color: '#f43f5e' },
-            { label: '24/7 Vet chat', color: '#a855f7' },
-            { label: 'Digital prescriptions', color: '#22c55e' },
-            { label: 'Symptom checking', color: '#f97316' },
-            { label: 'Health tracking', color: '#3b82f6' },
-            { label: 'Diet & nutrition', color: '#eab308' },
-          ].map(({ label, color }) => (
-            <span
+            { label: 'Video consultations', color: '#f43f5e', path: '/services#video-consultations' },
+            { label: '24/7 Vet chat', color: '#a855f7', path: '/services#vet-chat' },
+            { label: 'Digital prescriptions', color: '#22c55e', path: '/services#prescriptions' },
+            { label: 'Symptom checking', color: '#f97316', path: '/services#symptom-checking' },
+            { label: 'Health tracking', color: '#3b82f6', path: '/services#health-tracking' },
+            { label: 'Diet & nutrition', color: '#eab308', path: '/services#diet-nutrition' },
+          ].map(({ label, color, path }) => (
+            <Link
+              to={path}
               key={label}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                fontSize: '0.75rem',
-                fontWeight: '700',
-                color: '#334155',
-                backgroundColor: '#fff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '9999px',
-                padding: '0.5rem 1rem',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                whiteSpace: 'nowrap',
-              }}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-full px-4 py-2 shadow-sm whitespace-nowrap hover:bg-slate-50 hover:shadow-md hover:border-slate-300 transition-all hover:-translate-y-0.5 cursor-pointer"
             >
               <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: color, flexShrink: 0, display: 'inline-block' }} />
               {label}
-            </span>
+            </Link>
           ))}
         </div>
 
