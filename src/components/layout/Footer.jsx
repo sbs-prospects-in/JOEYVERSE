@@ -214,11 +214,11 @@ export default function Footer() {
             </div>
             
             {/* Cartoon Pets Sitting Side-by-Side */}
-            <div className="flex items-end gap-1 mt-4 relative h-28 w-max select-none">
-              <TransparentImage src="/images/cartoon-dog.png" alt="Cartoon Dog" className="h-28 object-contain" />
-              <SittingCatSVG className="h-20 w-20 object-contain ml-[-20px] pb-1 shrink-0" />
+            <div className="flex items-end gap-1 mt-4 relative h-32 w-max select-none bg-white/70 px-4 pt-4 pb-2 rounded-[2rem] shadow-sm border border-white/80 backdrop-blur-md">
+              <TransparentImage src="/images/cartoon-dog.png" alt="Cartoon Dog" className="h-28 object-contain drop-shadow-sm" />
+              <SittingCatSVG className="h-20 w-20 object-contain ml-[-20px] pb-1 shrink-0 drop-shadow-sm" />
               {/* Heart bubble */}
-              <div className="absolute top-4 left-24 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
+              <div className="absolute top-2 left-28 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
                 <Heart className="w-3 h-3 fill-current text-white" />
               </div>
             </div>
