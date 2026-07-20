@@ -42,9 +42,9 @@ export default function Footer() {
           
           {/* Col 1: Brand & Desc */}
           <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-5">
-              <img src="/images/logo_icon.png" alt="Joeyverse Icon" className="h-16 md:h-20 w-auto object-contain" />
-              <img src="/images/logo_text.png" alt="Joeyverse Text" className="h-7 md:h-9 w-auto object-contain -translate-y-1 ml-2" />
+            <div className="flex items-center gap-3">
+              <img src="/images/logo_icon.png" alt="Joeyverse Icon" className="h-16 md:h-20 w-auto object-contain shrink-0" />
+              <img src="/images/logo_text.png" alt="Joeyverse Text" className="w-[140px] md:w-[180px] h-auto object-contain -translate-y-1" />
             </div>
             <p className="text-[0.9rem] leading-relaxed text-slate-600">
               Where pet parents find the best care, advice, and support. Trusted connections for happier, healthier pets and a well-balanced life.
