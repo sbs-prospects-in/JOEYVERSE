@@ -1,10 +1,27 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Video, MessageSquare, Pill, Apple, Award, Star } from 'lucide-react';
 
 export default function Services() {
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (hash) {
+      const id = hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [hash]);
+
   const services = [
     { 
+      id: 'video-consultations',
       number: '01',
       title: 'Video Consults', 
       desc: 'Secure high-definition video calls with verified veterinarians. Perfect for initial triage checks, visual symptoms review, and behavioral check-ins.',
@@ -13,6 +30,7 @@ export default function Services() {
       badge: '24/7 Available'
     },
     { 
+      id: 'vet-chat',
       number: '02',
       title: 'Instant Vet Chat', 
       desc: 'Send messages, photos, or video clips of symptoms. Vets reply quickly to provide immediate guidance and follow-up adjustments.',
@@ -21,6 +39,7 @@ export default function Services() {
       badge: 'Instant Reply'
     },
     { 
+      id: 'prescriptions',
       number: '03',
       title: 'Digital Refills', 
       desc: 'Manage renewals and digital prescriptions stubs securely. Coordinate with pharmacy centers to request and deliver active refills.',
@@ -29,6 +48,7 @@ export default function Services() {
       badge: 'Secure Stub'
     },
     { 
+      id: 'diet-nutrition',
       number: '04',
       title: 'Diet & Nutrition', 
       desc: 'Obtain custom recipes and caloric intakes mapped specifically for your dog or cat\'s breeds, age weight, and metabolic conditions.',
@@ -37,6 +57,7 @@ export default function Services() {
       badge: 'Custom Diet'
     },
     { 
+      id: 'symptom-checking',
       number: '05',
       title: 'Behavior Tips', 
       desc: 'Discuss separation anxiety, social training blockages, and stress triggers with animal experts via video guidance calls.',
@@ -61,7 +82,7 @@ export default function Services() {
       {services.map((srv, idx) => {
         const Icon = srv.icon;
         return (
-          <section key={idx} className="relative w-full h-screen z-10">
+          <section id={srv.id} key={idx} className="relative w-full h-screen z-10">
             
             {/* Parallax Clipping Window */}
             <div 
