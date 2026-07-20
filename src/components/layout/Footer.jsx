@@ -85,7 +85,7 @@ export default function Footer() {
                 }} 
               />
               {/* Heart bubble */}
-              <div className="absolute top-4 left-24 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
+              <div className="absolute top-4 left-14 bg-rose-500 text-white rounded-full p-1.5 shadow-md animate-bounce">
                 <Heart className="w-3 h-3 fill-current text-white" />
               </div>
             </div>
