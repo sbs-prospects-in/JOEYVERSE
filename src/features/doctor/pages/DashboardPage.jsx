@@ -1218,8 +1218,12 @@ export default function DoctorDashboard() {
                       let earnings = 0;
                       let m = "--", s = "--";
                       
-                      if (
-                        (session.status === "COMPLETED" || session.status === "CANCELLED") &&
+                      if (session.status === "CANCELLED" || session.status === "REJECTED") {
+                        m = "00";
+                        s = "00";
+                        earnings = 0;
+                      } else if (
+                        session.status === "COMPLETED" &&
                         session.started_at &&
                         session.ended_at
                       ) {
@@ -1234,12 +1238,10 @@ export default function DoctorDashboard() {
                           .padStart(2, "0");
                         s = (seconds % 60).toString().padStart(2, "0");
                         
-                        if (session.status === "COMPLETED") {
-                          const intervals = Math.ceil(
-                            Math.max(seconds, 0) / 60,
-                          );
-                          earnings = intervals * session.per_minute_rate;
-                        }
+                        const intervals = Math.ceil(
+                          Math.max(seconds, 0) / 60,
+                        );
+                        earnings = intervals * session.per_minute_rate;
                       }
 
                       const dateToUse =
@@ -1303,12 +1305,25 @@ export default function DoctorDashboard() {
                           <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-4 sm:gap-6 border-t lg:border-t-0 border-slate-100 pt-4 lg:pt-0 shrink-0">
                             {/* Earnings & Time */}
                             <div className="flex flex-col items-start sm:items-end w-full sm:w-auto">
-                              <div className={`text-sm font-black ${session.status === "COMPLETED" ? "text-emerald-600" : "text-slate-500"}`}>
-                                {session.status === "COMPLETED" ? `Earned: ₹${earnings}` : "₹0 Earned"}
-                              </div>
-                              <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1">
-                                <Clock size={12} /> {(session.status === "COMPLETED" || session.status === "CANCELLED") && session.started_at ? `${m}:${s} mins` : "--:-- mins"}
-                              </div>
+                              {session.status === "COMPLETED" && session.started_at && session.ended_at ? (
+                                <>
+                                  <div className="text-sm font-black text-emerald-600">
+                                    Earned: ₹{earnings}
+                                  </div>
+                                  <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1">
+                                    <Clock size={12} /> {m}:{s} mins
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-sm font-bold text-slate-700">
+                                    ₹{session.per_minute_rate}/min
+                                  </div>
+                                  <div className="text-xs font-semibold text-slate-400 mt-1 flex items-center gap-1">
+                                    <Calendar size={12} /> {new Date(dateToUse).toLocaleDateString()}
+                                  </div>
+                                </>
+                              )}
                             </div>
 
                             {/* Status Pill & Action Button */}

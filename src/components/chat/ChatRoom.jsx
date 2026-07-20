@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useBlocker } from 'react-router-dom';
 import { supabase } from '../../features/auth/api/supabase';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../features/auth/store/authStore';
-import { Send, ShieldCheck, CheckCircle, Phone, PhoneCall, PhoneOff, Mic, MicOff, Trash2, StopCircle, Paperclip, Play, Pause, Image as ImageIcon, X, Star } from 'lucide-react';
-
+import { Send, ShieldCheck, CheckCircle, Phone, PhoneCall, PhoneOff, Mic, MicOff, Trash2, StopCircle, Paperclip, Play, Pause, Image as ImageIcon, X, Star, Video, ImagePlus } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 const VoiceMessagePlayer = ({ src, duration: initialDuration }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -87,7 +90,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
-  const [hasRated, setHasRated] = useState(false);
+  const [hasRated, setHasRated] = useState(!!consultation.rating);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   
   // Wallet warning state
@@ -95,6 +98,23 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const walletWarningShownRef = useRef(false);
   const ratingModalShownRef = useRef(false);
   
+  // Navigation guard
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      consultationStatus === 'ACTIVE' && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      const confirmLeave = window.confirm("You have an active consultation. Are you sure you want to leave? It will NOT end the consultation automatically.");
+      if (confirmLeave) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
+
   useEffect(() => {
     if (consultation.status !== consultationStatus) {
       setConsultationStatus(consultation.status);
@@ -120,7 +140,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   const typingChannelRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const photoInputRef = useRef(null);
+  const videoInputRef = useRef(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [mediaPreviews, setMediaPreviews] = useState([]); // Array for multiple files
 
@@ -440,43 +461,10 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
           typingChannelRef.current = roomChannel;
         }
       });
-        
-      const fallbackMsgInterval = setInterval(async () => {
-        const { data } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('consultation_id', consultation.id)
-          .order('created_at', { ascending: true });
-          
-        if (data) {
-          setMessages(prev => {
-            if (data.length > prev.length) {
-              setTimeout(scrollToBottom, 100);
-              return data;
-            }
-            return prev;
-          });
-        }
-      }, 30000);
-      
-      const fallbackConsInterval = setInterval(async () => {
-        const { data } = await supabase
-          .from('consultations')
-          .select('status, ended_at')
-          .eq('id', consultation.id)
-          .single();
-          
-        if (data && data.status === 'COMPLETED' && consultationStatus !== 'COMPLETED') {
-          setConsultationStatus('COMPLETED');
-          setEndTime(data.ended_at || new Date().toISOString());
-        }
-      }, 30000);
 
       return () => {
         if (walletChannel) supabase.removeChannel(walletChannel);
         supabase.removeChannel(roomChannel);
-        clearInterval(fallbackMsgInterval);
-        clearInterval(fallbackConsInterval);
       };
   }, [consultation.id, consultation.per_minute_rate, currentUserId, userRole]);
 
@@ -579,7 +567,26 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     }]);
   };
 
-  const handleFileUpload = (e) => {
+  const compressVideo = async (file) => {
+    try {
+      const ffmpeg = new FFmpeg();
+      // Load ffmpeg. Use single threaded core if possible, or standard.
+      await ffmpeg.load({
+        coreURL: await fetchFile('https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js'),
+        wasmURL: await fetchFile('https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'),
+      });
+      await ffmpeg.writeFile('input.mp4', await fetchFile(file));
+      // Compress video to 720p maximum, lower bitrate
+      await ffmpeg.exec(['-i', 'input.mp4', '-vf', 'scale=-2:720', '-b:v', '1M', 'output.mp4']);
+      const data = await ffmpeg.readFile('output.mp4');
+      return new File([data.buffer], file.name.replace(/\.[^/.]+$/, "") + "_compressed.mp4", { type: 'video/mp4' });
+    } catch (err) {
+      console.warn("FFmpeg compression failed, falling back to original:", err);
+      return file;
+    }
+  };
+
+  const handleFileUpload = async (e, expectedType) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
@@ -588,32 +595,50 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       return;
     }
 
-    const validFiles = files.filter(f => {
-      if (f.type.startsWith('image/')) {
-        if (f.size > 5 * 1024 * 1024) {
-          toast.error(`Image ${f.name} is too large (max 5MB)`);
-          return false;
+    setUploadingMedia(true);
+    toast("Processing media...", { icon: '⏳' });
+
+    const processedFiles = [];
+    
+    for (const f of files) {
+      if (expectedType === 'image' && f.type.startsWith('image/')) {
+        try {
+          const options = {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+            fileType: 'image/webp'
+          };
+          const compressedFile = await imageCompression(f, options);
+          processedFiles.push({
+            file: compressedFile,
+            previewUrl: URL.createObjectURL(compressedFile),
+            type: 'image'
+          });
+        } catch (err) {
+          console.error("Image compression error:", err);
+          processedFiles.push({ file: f, previewUrl: URL.createObjectURL(f), type: 'image' });
         }
-      } else if (f.type.startsWith('video/')) {
-        if (f.size > 25 * 1024 * 1024) {
-          toast.error(`Video ${f.name} is too large (max 25MB)`);
-          return false;
+      } else if (expectedType === 'video' && f.type.startsWith('video/')) {
+        if (f.size > 50 * 1024 * 1024) {
+          toast.error(`Video ${f.name} is too large (max 50MB)`);
+          continue;
         }
+        // Attempt FFmpeg compression
+        const compressedFile = await compressVideo(f);
+        processedFiles.push({
+          file: compressedFile,
+          previewUrl: URL.createObjectURL(compressedFile),
+          type: 'video'
+        });
       } else {
-        toast.error(`File ${f.name} has an unsupported format. Only images and videos are allowed.`);
-        return false;
+        toast.error(`File ${f.name} is not a valid ${expectedType}.`);
       }
-      return true;
-    });
+    }
 
-    const newPreviews = validFiles.map(file => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-      type: file.type.startsWith('video/') ? 'video' : 'image'
-    }));
-
-    setMediaPreviews(prev => [...prev, ...newPreviews].slice(0, 5));
-    e.target.value = ''; // Clear input
+    setMediaPreviews(prev => [...prev, ...processedFiles].slice(0, 5));
+    e.target.value = '';
+    setUploadingMedia(false);
   };
 
   const cancelMediaPreview = (indexToCancel) => {
@@ -1157,21 +1182,40 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                 placeholder="Type your message..."
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-5 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-400"
               />
-              <button 
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingMedia}
-                className="w-11 h-11 rounded-full flex items-center justify-center transition-colors shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
-                title="Attach Photo/Video"
-              >
-                {uploadingMedia ? <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin"></div> : <Paperclip size={18} />}
-              </button>
+              <div className="flex items-center gap-1">
+                <button 
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingMedia}
+                  className="w-11 h-11 rounded-full flex items-center justify-center transition-colors shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+                  title="Upload Photos"
+                >
+                  <ImagePlus size={18} />
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => videoInputRef.current?.click()}
+                  disabled={uploadingMedia}
+                  className="w-11 h-11 rounded-full flex items-center justify-center transition-colors shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+                  title="Upload Videos"
+                >
+                  {uploadingMedia ? <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin"></div> : <Video size={18} />}
+                </button>
+              </div>
               <input 
                 type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
+                ref={photoInputRef} 
+                onChange={(e) => handleFileUpload(e, 'image')} 
                 className="hidden" 
-                accept="image/*,video/*" 
+                accept="image/*" 
+                multiple
+              />
+              <input 
+                type="file" 
+                ref={videoInputRef} 
+                onChange={(e) => handleFileUpload(e, 'video')} 
+                className="hidden" 
+                accept="video/*" 
                 multiple
               />
               <button 
@@ -1206,9 +1250,11 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Duration</p>
                <p className="text-xl font-black text-slate-900">
                  {(() => {
+                    if (consultation.status === 'CANCELLED' || consultation.status === 'REJECTED') return '00:00';
                     const start = new Date(consultation.started_at || consultation.created_at).getTime();
                     const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
                     let seconds = Math.floor((end - start) / 1000);
+                    if (seconds < 0) seconds = 0;
                     return formatTime(seconds);
                  })()}
                </p>
@@ -1221,9 +1267,11 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Final Fee</p>
                  <p className="text-xl font-black text-blue-600">
                    ₹{(() => {
+                      if (consultation.status === 'CANCELLED' || consultation.status === 'REJECTED') return 0;
                       const start = new Date(consultation.started_at || consultation.created_at).getTime();
                       const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
                       let seconds = Math.floor((end - start) / 1000);
+                      if (seconds < 0) seconds = 0;
                       const intervals = Math.ceil(Math.max(seconds, 0) / 60);
                       return intervals * consultation.per_minute_rate;
                    })()}
@@ -1234,9 +1282,11 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Earned</p>
                  <p className="text-xl font-black text-emerald-500">
                    ₹{(() => {
+                      if (consultation.status === 'CANCELLED' || consultation.status === 'REJECTED') return 0;
                       const start = new Date(consultation.started_at || consultation.created_at).getTime();
                       const end = new Date(endTime || consultation.ended_at || new Date()).getTime();
                       let seconds = Math.floor((end - start) / 1000);
+                      if (seconds < 0) seconds = 0;
                       const intervals = Math.ceil(Math.max(seconds, 0) / 60);
                       return intervals * consultation.per_minute_rate;
                    })()}
