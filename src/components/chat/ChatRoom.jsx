@@ -557,20 +557,9 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       });
     }
     
-    const tempMessage = {
-      id: Math.random().toString(),
-      consultation_id: consultation.id,
-      sender_id: currentUserId,
-      message_text: messageText,
-      created_at: new Date().toISOString()
-    };
-    
-    setMessages(prev => [...prev, tempMessage]);
-    scrollToBottom();
-
     const receiverId = currentUserId === consultation.doctor_id ? consultation.owner_id : consultation.doctor_id;
 
-    await supabase.from('messages').insert([{
+    const { data, error } = await supabase.from('messages').insert([{
       consultation_id: consultation.id,
       sender_id: currentUserId,
       receiver_id: receiverId,
