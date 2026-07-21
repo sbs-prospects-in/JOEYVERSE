@@ -463,31 +463,13 @@ export default function PetOwnerDashboard() {
     // Ensure amount is a number
     const amount = parseFloat(amountStr);
 
-    try {
-      // Call the secure backend endpoint to bypass RLS
-      const response = await fetch("/api/wallet/topup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          amount: amount,
-        }),
-      });
+    toast.success(`Successfully added ₹${amount} to your wallet!`);
+    setIsStripeModalOpen(false);
 
-      if (!response.ok) {
-        throw new Error("Failed to update wallet balance on server");
-      }
-
-      toast.success(`Successfully added ₹${amount} to your wallet!`);
-      setIsStripeModalOpen(false);
-
+    // Fetch wallet after a short delay to allow webhook to process
+    setTimeout(() => {
       fetchWallet();
-    } catch (err) {
-      console.error(err);
-      toast.error("An error occurred while updating the wallet.");
-    }
+    }, 2000);
   };
 
   const handleTopUp = () => {

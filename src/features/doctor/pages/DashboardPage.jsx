@@ -336,12 +336,22 @@ export default function DoctorDashboard() {
 
   const toggleAvailability = async () => {
     const newStatus = isOnline ? "OFFLINE" : "ONLINE";
+    // Optimistic UI update
     setIsOnline(!isOnline);
-    await supabase
+    
+    const { error } = await supabase
       .from("doctor_profiles")
       .update({ status: newStatus })
       .eq("id", user.id);
-    toast.success(`You are now ${newStatus}`);
+      
+    if (error) {
+      console.error("Status update error:", error);
+      toast.error("Failed to update status: " + error.message);
+      // Revert optimistic update
+      setIsOnline(isOnline);
+    } else {
+      toast.success(`You are now ${newStatus}`);
+    }
   };
 
   const handleAction = async (consultationId, action) => {
