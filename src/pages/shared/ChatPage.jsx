@@ -233,13 +233,6 @@ export default function ChatPage() {
           />
         </div>
       </div>
-
-      {showRating && (
-        <RatingModal 
-          onSubmit={handleRatingSubmit} 
-          onClose={handleRatingClose} 
-        />
-      )}
     </div>
   );
 }

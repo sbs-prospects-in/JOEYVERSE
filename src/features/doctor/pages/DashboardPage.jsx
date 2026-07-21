@@ -363,7 +363,7 @@ export default function DoctorDashboard() {
 
       if (!error) {
         toast.success("Consultation started! redirecting...");
-        setTimeout(() => navigate(`/doctor/chat/${consultationId}`), 1000);
+        navigate(`/doctor/chat/${consultationId}`);
       } else {
         toast.error("Failed to accept: " + error.message);
       }
