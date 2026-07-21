@@ -190,78 +190,9 @@ export default function DoctorDashboard() {
     if (historyData) {
       let finalHistory = await enrichWithOwnerNames(historyData.slice(0, 5));
 
-      // MOCK DATA: if there is no real history, show mock history so the user can see the UI
-      if (finalHistory.length === 0) {
-        const mockNow = new Date();
-        finalHistory = [
-          {
-            id: "mock-1",
-            status: "COMPLETED",
-            created_at: new Date(
-              mockNow.getTime() - 2 * 60 * 60 * 1000,
-            ).toISOString(),
-            started_at: new Date(
-              mockNow.getTime() - 2 * 60 * 60 * 1000,
-            ).toISOString(),
-            ended_at: new Date(
-              mockNow.getTime() - 1.5 * 60 * 60 * 1000,
-            ).toISOString(),
-            per_minute_rate: 15,
-            rating: 5,
-            feedback: "Great consultation! Very helpful.",
-            owner: { name: "Rahul Kumar" },
-          },
-          {
-            id: "mock-2",
-            status: "COMPLETED",
-            created_at: new Date(
-              mockNow.getTime() - 24 * 60 * 60 * 1000,
-            ).toISOString(),
-            started_at: new Date(
-              mockNow.getTime() - 24 * 60 * 60 * 1000,
-            ).toISOString(),
-            ended_at: new Date(
-              mockNow.getTime() - 23.8 * 60 * 60 * 1000,
-            ).toISOString(),
-            per_minute_rate: 15,
-            rating: 4,
-            feedback: "Good advice.",
-            owner: { name: "Priya Sharma" },
-          },
-          {
-            id: "mock-3",
-            status: "COMPLETED",
-            created_at: new Date(
-              mockNow.getTime() - 48 * 60 * 60 * 1000,
-            ).toISOString(),
-            started_at: new Date(
-              mockNow.getTime() - 48 * 60 * 60 * 1000,
-            ).toISOString(),
-            ended_at: new Date(
-              mockNow.getTime() - 47.5 * 60 * 60 * 1000,
-            ).toISOString(),
-            per_minute_rate: 15,
-            rating: 5,
-            feedback: "Amazing vet, solved my issue quickly.",
-            owner: { name: "Amit Patel" },
-          },
-        ];
-
-        // Populate dummy active/waitlist for UI demonstration if empty
-        if (activeConsultations.length === 0) {
-          setActiveConsultations([
-            {
-              id: "mock-active",
-              status: "ACTIVE",
-              owner: { name: "Ravi Verma" },
-            },
-          ]);
-        }
-      }
-
       setHistory(finalHistory);
 
-      const dataToProcess = historyData.length > 0 ? historyData : finalHistory;
+      const dataToProcess = historyData;
       // Calculate stats
       const now = new Date();
       const today = new Date(
