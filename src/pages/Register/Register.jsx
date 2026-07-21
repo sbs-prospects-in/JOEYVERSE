@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/store/authStore';
 import toast, { Toaster } from 'react-hot-toast';
-import { User, Mail, Lock, PawPrint, Heart, Sparkles } from 'lucide-react';
+import { User, Mail, Lock, PawPrint, Heart, Sparkles, Phone, FileText, Stethoscope } from 'lucide-react';
 
 function BoneSVG({ className }) {
   return (
@@ -121,7 +121,19 @@ export default function Register() {
             const email = e.target.registerEmail.value;
             const password = e.target.registerPassword.value;
             
-            const result = await signup(email, password, role, { name });
+            let additionalData = { name };
+            
+            if (role === 'doctor') {
+              additionalData.phone = e.target.registerPhone.value;
+              additionalData.license_number = e.target.registerLicense.value;
+              additionalData.specialization = e.target.registerSpecialization.value;
+            } else {
+              if (e.target.registerPhone) {
+                additionalData.phone = e.target.registerPhone.value;
+              }
+            }
+
+            const result = await signup(email, password, role, additionalData);
             
             if (result.success) {
               if (role === 'doctor') {
@@ -229,6 +241,84 @@ export default function Register() {
               />
             </div>
           </div>
+
+          {/* Conditional Doctor Fields */}
+          {role === 'doctor' && (
+            <div className="bg-[#A9DFBF]/20 p-4 rounded-xl border border-[#A9DFBF]/40 flex flex-col gap-3 mt-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Stethoscope className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Professional Details</h3>
+              </div>
+              
+              {/* Phone input */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="registerPhone" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                  <input 
+                    type="tel" 
+                    id="registerPhone" 
+                    placeholder="+1 (555) 000-0000" 
+                    className="w-full bg-white/60 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
+                    required={role === 'doctor'} 
+                  />
+                </div>
+              </div>
+
+              {/* License Number input */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="registerLicense" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
+                  Medical License Number
+                </label>
+                <div className="relative">
+                  <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                  <input 
+                    type="text" 
+                    id="registerLicense" 
+                    placeholder="e.g. VET-123456" 
+                    className="w-full bg-white/60 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
+                    required={role === 'doctor'} 
+                  />
+                </div>
+              </div>
+
+              {/* Specialization input */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="registerSpecialization" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
+                  Primary Specialization
+                </label>
+                <div className="relative">
+                  <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                  <input 
+                    type="text" 
+                    id="registerSpecialization" 
+                    placeholder="e.g. General Practice, Surgery" 
+                    className="w-full bg-white/60 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
+                    required={role === 'doctor'} 
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {role === 'petOwner' && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="registerPhone" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
+                Phone Number (Optional)
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                <input 
+                  type="tel" 
+                  id="registerPhone" 
+                  placeholder="+1 (555) 000-0000" 
+                  className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button 

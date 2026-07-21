@@ -56,6 +56,7 @@ export default function ChatPage() {
   
   const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showRating, setShowRating] = useState(false);
 
   useEffect(() => {
     const initChat = async () => {
@@ -100,6 +101,7 @@ export default function ChatPage() {
           setConsultation(prev => {
              // Only show rating if the chat transitioned from ACTIVE to COMPLETED while on this page
              if (prev && prev.status === 'ACTIVE') {
+                 if (userRole === 'petOwner') setShowRating(true);
                  return {...prev, status: 'COMPLETED'};
              }
              return prev;
@@ -144,6 +146,36 @@ export default function ChatPage() {
     
     setConsultation(prev => ({...prev, status: 'COMPLETED', ended_at: endedAt}));
     toast.success("Consultation completed!");
+    
+    // Show rating modal for Pet Owners
+    if (userRole === 'petOwner') {
+      setShowRating(true);
+    } else {
+      navigate('/doctor/dashboard');
+    }
+  };
+
+  const handleRatingSubmit = async (rating, feedback) => {
+    try {
+      const { error } = await supabase
+        .from('consultations')
+        .update({ rating, review_text: feedback })
+        .eq('id', id);
+        
+      if (error) throw error;
+      toast.success("Thank you for your feedback!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit review");
+    } finally {
+      setShowRating(false);
+      navigate('/pet-owner/dashboard');
+    }
+  };
+
+  const handleRatingClose = () => {
+    setShowRating(false);
+    navigate('/pet-owner/dashboard');
   };
 
 
@@ -201,6 +233,13 @@ export default function ChatPage() {
           />
         </div>
       </div>
+
+      {showRating && (
+        <RatingModal 
+          onSubmit={handleRatingSubmit} 
+          onClose={handleRatingClose} 
+        />
+      )}
     </div>
   );
 }

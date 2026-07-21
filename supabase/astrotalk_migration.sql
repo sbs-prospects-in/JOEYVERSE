@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS public.consultations (
     per_minute_rate NUMERIC NOT NULL,
     started_at TIMESTAMP WITH TIME ZONE,
     ended_at TIMESTAMP WITH TIME ZONE,
+    rating NUMERIC(3, 2),
+    review_text TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

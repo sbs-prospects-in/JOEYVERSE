@@ -238,6 +238,7 @@ export default function AdminDashboardPage() {
                         <th className="px-6 py-5">Doctor Profile</th>
                         <th className="px-6 py-5">Specialization</th>
                         <th className="px-6 py-5">Consultation Rate</th>
+                        <th className="px-6 py-5">License & Phone</th>
                         <th className="px-6 py-5">Verification Status</th>
                         <th className="px-6 py-5 text-right">Actions</th>
                       </tr>
@@ -262,6 +263,10 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="px-6 py-4 font-medium text-slate-600">{doc.specialization || 'General'}</td>
                           <td className="px-6 py-4 font-bold text-slate-900">₹{doc.per_minute_rate || 0}/min</td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-slate-700">{doc.license_number || 'N/A'}</div>
+                            <div className="text-xs text-slate-500">{doc.phone || 'No Phone'}</div>
+                          </td>
                           <td className="px-6 py-4">
                             {doc.verified ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">

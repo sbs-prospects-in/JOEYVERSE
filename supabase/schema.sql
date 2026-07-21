@@ -110,7 +110,7 @@ CREATE TABLE public.chats (
 -- 2.8 Messages
 CREATE TABLE public.messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    chat_id UUID NOT NULL REFERENCES public.chats(id) ON DELETE CASCADE,
+    consultation_id UUID NOT NULL REFERENCES public.consultations(id) ON DELETE CASCADE,
     sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     receiver_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     message_text TEXT,
@@ -177,7 +177,17 @@ CREATE POLICY "Participants view chats" ON public.chats FOR SELECT USING (auth.u
 
 -- Messages: Only participants can read/insert.
 CREATE POLICY "Participants view messages" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
-CREATE POLICY "Participants insert messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
+CREATE POLICY "Participants insert messages" ON public.messages FOR INSERT WITH CHECK (
+  auth.uid() = sender_id AND
+  EXISTS (
+    SELECT 1 FROM public.consultations c 
+    WHERE c.id = consultation_id 
+    AND (
+      (c.owner_id = sender_id AND c.doctor_id = receiver_id) OR
+      (c.doctor_id = sender_id AND c.owner_id = receiver_id)
+    )
+  )
+);
 CREATE POLICY "Receivers can update is_read" ON public.messages FOR UPDATE USING (auth.uid() = receiver_id);
 
 -- Documents: Uploader manages, linked appointment participants can view.
@@ -197,6 +207,23 @@ INSERT INTO storage.buckets (id, name, public) VALUES
 ('chat-media', 'chat-media', false),
 ('medical-documents', 'medical-documents', false)
 ON CONFLICT (id) DO NOTHING;
+
+-- Storage Objects Policies for pet-images
+CREATE POLICY "Allow authenticated uploads to pet-images" 
+ON storage.objects FOR INSERT 
+WITH CHECK (bucket_id = 'pet-images' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Allow public view for pet-images" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'pet-images');
+
+CREATE POLICY "Users can update own pet-images"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'pet-images' AND auth.uid() = owner);
+
+CREATE POLICY "Users can delete own pet-images"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'pet-images' AND auth.uid() = owner);
 
 -- ==========================================
 -- 6. AUTHENTICATION TRIGGER

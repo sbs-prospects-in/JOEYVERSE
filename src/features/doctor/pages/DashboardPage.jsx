@@ -553,6 +553,14 @@ export default function DoctorDashboard() {
     const firstName =
       fullDisplayName.replace(/^Dr\.\s*/, "").split(" ")[0] || "Doctor";
 
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-500/20 pb-20 overflow-x-hidden">
         <Toaster position="top-center" />
@@ -691,6 +699,27 @@ export default function DoctorDashboard() {
         </div>
 
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          {/* Unverified Banner */}
+          {profileData && profileData.verified === false && (
+            <div className="bg-rose-50 border-l-4 border-rose-500 p-4 mb-8 rounded-r-xl shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <ShieldCheck className="h-5 w-5 text-rose-500" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-bold text-rose-800">
+                      Your account is pending manual verification.
+                    </p>
+                    <p className="text-xs text-rose-600 mt-1">
+                      You cannot accept live consultations until our team reviews your medical license.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Metric Cards Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
             {/* Sessions Card */}

@@ -77,6 +77,7 @@ export default function PetOwnerDashboard() {
   const [isAddPetOpen, setIsAddPetOpen] = useState(false);
   const [isStripeModalOpen, setIsStripeModalOpen] = useState(false);
   const [selectedPet, setSelectedPet] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [newPet, setNewPet] = useState({
     name: "",
@@ -128,15 +129,13 @@ export default function PetOwnerDashboard() {
     }
   };
 
-  const fetchPets = () => {
+  const fetchPets = async () => {
     if (user?.id) {
-      supabase
+      const { data } = await supabase
         .from("pets")
         .select("*")
-        .eq("owner_id", user.id)
-        .then(({ data }) => {
-          if (data) setMyPets(data);
-        });
+        .eq("owner_id", user.id);
+      if (data) setMyPets(data);
     }
   };
 
@@ -216,9 +215,11 @@ export default function PetOwnerDashboard() {
 
   useEffect(() => {
     if (user?.id) {
-      fetchConsultations();
-      fetchPets();
-      fetchWallet();
+      Promise.all([
+        fetchConsultations(),
+        fetchPets(),
+        fetchWallet()
+      ]).finally(() => setLoading(false));
 
       const channel = supabase
         .channel("public:consultations_owner")
@@ -494,6 +495,14 @@ export default function PetOwnerDashboard() {
   };
 
   const displayName = user?.user_metadata?.name || user?.email || "Pet Owner";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100">

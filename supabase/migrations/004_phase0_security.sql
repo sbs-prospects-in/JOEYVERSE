@@ -63,12 +63,14 @@ DROP POLICY IF EXISTS "Enable read access for all" ON public.wallets;
 DROP POLICY IF EXISTS "Users can insert own wallet" ON public.wallets;
 DROP POLICY IF EXISTS "Users can update own wallet" ON public.wallets;
 
+DROP POLICY IF EXISTS "Users view own wallet" ON public.wallets;
 CREATE POLICY "Users view own wallet" ON public.wallets FOR SELECT USING (auth.uid() = user_id);
 
 -- Wallet Transactions
 DROP POLICY IF EXISTS "Enable read access for all" ON public.wallet_transactions;
 DROP POLICY IF EXISTS "Users can insert own transactions" ON public.wallet_transactions;
 
+DROP POLICY IF EXISTS "Users view own wallet transactions" ON public.wallet_transactions;
 CREATE POLICY "Users view own wallet transactions" ON public.wallet_transactions FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM public.wallets WHERE wallets.id = wallet_transactions.wallet_id AND wallets.user_id = auth.uid()
@@ -90,6 +92,7 @@ CREATE POLICY "Doctors update own profile" ON public.doctor_profiles FOR UPDATE 
 -- 3. CHAT MEDIA BUCKET
 DROP POLICY IF EXISTS "Allow public view for chat-media" ON storage.objects;
 -- Provide authenticated access (will use signed URLs for specific access in API if needed)
+DROP POLICY IF EXISTS "Participants view chat-media" ON storage.objects;
 CREATE POLICY "Participants view chat-media" ON storage.objects FOR SELECT USING (
   bucket_id = 'chat-media' AND auth.role() = 'authenticated'
 );
@@ -97,6 +100,7 @@ CREATE POLICY "Participants view chat-media" ON storage.objects FOR SELECT USING
 -- 4. MESSAGES RLS
 DROP POLICY IF EXISTS "Participants insert messages" ON public.messages;
 
+DROP POLICY IF EXISTS "Participants insert messages" ON public.messages;
 CREATE POLICY "Participants insert messages" ON public.messages FOR INSERT WITH CHECK (
   auth.uid() = sender_id AND
   EXISTS (
@@ -126,8 +130,9 @@ CREATE TABLE IF NOT EXISTS public.admin_profiles (
 
 -- Enable RLS on admin_profiles
 ALTER TABLE public.admin_profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins view admin profiles" ON public.admin_profiles;
 CREATE POLICY "Admins view admin profiles" ON public.admin_profiles FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.admin_profiles a WHERE a.id = auth.uid())
+  auth.uid() = id
 );
 
 -- Add Admin viewing capability to messages
