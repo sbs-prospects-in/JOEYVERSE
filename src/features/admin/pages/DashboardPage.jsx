@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../auth/api/supabase';
 import { useAuthStore } from '../../auth/store/authStore';
-import { Users, Activity, DollarSign, ShieldAlert, CheckCircle, XCircle, LayoutDashboard, Search, Ban, Eye, XOctagon } from 'lucide-react';
+import { Users, Activity, DollarSign, ShieldAlert, CheckCircle, XCircle, LayoutDashboard, Search, Ban, Eye, XOctagon, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ChatInspector from '../components/ChatInspector';
 
