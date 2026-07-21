@@ -405,6 +405,11 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
 
     fetchMessages();
 
+    // Fallback polling for messages every 2 seconds
+    const msgInterval = setInterval(() => {
+      fetchMessages();
+    }, 2000);
+
     let walletChannel;
     if (userRole === 'petOwner') {
       const fetchWallet = async () => {
@@ -459,11 +464,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
          }
       })
       .on('broadcast', { event: 'typing' }, (payload) => {
-        setIsTyping(payload.payload.isTyping && !payload.payload.isRecording);
-        setIsRecordingIndicator(!!payload.payload.isRecording);
-        if (payload.payload.isTyping || payload.payload.isRecording) {
-          scrollToBottom();
-        }
+        setIsTyping(payload.payload.isTyping);
+        setIsRecordingIndicator(payload.payload.isRecording);
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
@@ -472,6 +474,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       });
 
       return () => {
+        clearInterval(msgInterval);
         if (walletChannel) supabase.removeChannel(walletChannel);
         supabase.removeChannel(roomChannel);
       };
