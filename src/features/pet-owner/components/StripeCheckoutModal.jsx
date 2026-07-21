@@ -3,6 +3,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { X, CreditCard, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../auth/store/authStore';
 
 // Load Stripe outside of component to avoid recreating the object on every render
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -84,6 +85,7 @@ const CheckoutForm = ({ amount, onSuccess, onClose }) => {
 };
 
 export default function StripeCheckoutModal({ isOpen, onClose, onSuccess }) {
+  const { user } = useAuthStore();
   const [amount, setAmount] = useState(500);
   const [clientSecret, setClientSecret] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -106,7 +108,7 @@ export default function StripeCheckoutModal({ isOpen, onClose, onSuccess }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, userId: user?.id }),
       });
       
       const data = await response.json();
