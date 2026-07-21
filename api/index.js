@@ -217,3 +217,6 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export default app;
+
+export const config = { api: { bodyParser: false } };
+

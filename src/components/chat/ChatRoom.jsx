@@ -986,38 +986,16 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                 if (rating === 0) { toast.error("Please select a star rating"); return; }
                 setIsSubmittingRating(true);
                 try {
-                  // First try to update with both rating and feedback
                   const { error: ratingError } = await supabase.from('consultations').update({
                     rating: rating,
                     feedback: reviewText || null,
                   }).eq('id', consultation.id);
                   
                   if (ratingError) {
-                    // If review_text column doesn't exist, try with just rating
-                    console.warn("Rating update error:", ratingError);
-                    const { error: ratingOnlyError } = await supabase.from('consultations').update({
-                      rating: rating,
-                    }).eq('id', consultation.id);
-                    if (ratingOnlyError) throw ratingOnlyError;
+                    throw ratingError;
                   }
 
-                  // Update Doctor Profile Average Rating
-                  const { data: pastConsultations } = await supabase
-                    .from('consultations')
-                    .select('rating')
-                    .eq('doctor_id', consultation.doctor_id)
-                    .not('rating', 'is', null);
-                    
-                  if (pastConsultations && pastConsultations.length > 0) {
-                    const allRatings = [...pastConsultations.map(c => c.rating), rating];
-                    const newAvg = (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(2);
-                    
-                    await supabase.from('doctor_profiles').update({
-                      rating: parseFloat(newAvg)
-                    }).eq('id', consultation.doctor_id);
-                  }
-
-                  toast.success("Thank you for your feedback! ⭐");
+                  toast.success("Thank you for your feedback! 🐾");
                   setShowRatingModal(false);
                   setHasRated(true);
                   setTimeout(() => navigate('/pet-owner/dashboard'), 500);

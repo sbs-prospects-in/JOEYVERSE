@@ -46,18 +46,22 @@ export default function AdminDashboardPage() {
 
   const handleUpdateDoctorStatus = async (id, statusUpdates) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('doctor_profiles')
         .update(statusUpdates)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
         
-      if (error) throw error;
+      if (error) {
+        throw new Error("You do not have permission to perform this action (or doctor not found).");
+      }
       
       toast.success("Doctor status updated successfully!");
       setDoctors(doctors.map(doc => doc.id === id ? { ...doc, ...statusUpdates } : doc));
     } catch (err) {
       console.error("Error updating doctor:", err);
-      toast.error("Failed to update status");
+      toast.error(err.message || "Failed to update status");
     }
   };
 
