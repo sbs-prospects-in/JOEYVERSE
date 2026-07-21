@@ -9,6 +9,7 @@ import RecoveryReport from "./pages/RecoveryReport/RecoveryReport";
 import WhyChooseUs from "./pages/WhyChooseUs/WhyChooseUs";
 import Register from "./pages/Register/Register";
 import SignIn from "./pages/SignIn/SignIn";
+import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import NotFound from "./pages/NotFound/NotFound";
 import DoctorDashboardPage from "./features/doctor/pages/DashboardPage";
 import PetOwnerDashboardPage from "./features/pet-owner/pages/DashboardPage";
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
       { path: "/why-choose-us", element: <WhyChooseUs /> },
       { path: "/register", element: <Register /> },
       { path: "/sign-in", element: <SignIn /> },
+      { path: "/reset-password", element: <ResetPassword /> },
       { path: "/blogs", element: <Blogs /> },
       { path: "/blogs/:id", element: <BlogPost /> },
       { path: "/faqs", element: <FAQs /> },

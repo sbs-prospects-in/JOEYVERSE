@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import emailjs from '@emailjs/browser';
+import CountryPhoneInput from './CountryPhoneInput';
 import { useModal } from '../../context/ModalContext';
 
 export default function ContactModal() {
@@ -174,7 +176,7 @@ export default function ContactModal() {
                     id="name"
                     name="name"
                     value={formData.name}
-                    onChange={handleChange}
+                    onChange={(e) => handleChange({ target: { name: 'name', value: e.target.value.replace(/[^a-zA-Z\s]/g, '') } })}
                     className="w-full bg-slate-50 border border-slate-200 focus:border-rose-400 focus:ring-4 focus:ring-rose-50 focus:bg-white px-4 py-3.5 rounded-xl text-sm outline-none transition-all text-slate-900 font-medium"
                   />
                   {errors.name && <span className="text-xs text-red-500 font-medium">{errors.name}</span>}
@@ -199,13 +201,11 @@ export default function ContactModal() {
                 {/* Phone */}
                 <div className="flex flex-col gap-2">
                   <label htmlFor="phone" className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Phone Number (Optional)</label>
-                  <input 
-                    type="tel" 
+                  <CountryPhoneInput
                     id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-rose-400 focus:ring-4 focus:ring-rose-50 focus:bg-white px-4 py-3.5 rounded-xl text-sm outline-none transition-all text-slate-900 font-medium"
+                    defaultValue={formData.phone}
+                    onChange={(val) => handleChange({ target: { name: 'phone', value: val } })}
+                    className="w-full h-12"
                   />
                   {errors.phone && <span className="text-xs text-red-500 font-medium">{errors.phone}</span>}
                 </div>

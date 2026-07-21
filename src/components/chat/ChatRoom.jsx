@@ -989,13 +989,29 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                 if (rating === 0) { toast.error("Please select a star rating"); return; }
                 setIsSubmittingRating(true);
                 try {
+                  // Try with the new 'feedback' column first
                   const { error: ratingError } = await supabase.from('consultations').update({
                     rating: rating,
                     feedback: reviewText || null,
                   }).eq('id', consultation.id);
                   
                   if (ratingError) {
-                    throw ratingError;
+                    console.error("Primary rating error:", ratingError);
+                    // Fallback to review_text if possible
+                    const { error: fallbackError } = await supabase.from('consultations').update({
+                      rating: rating,
+                      review_text: reviewText || null,
+                    }).eq('id', consultation.id);
+                    
+                    if (fallbackError) {
+                      console.error("Fallback rating error:", fallbackError);
+                      // If it still fails, check if the table even exists or RLS is blocking
+                      const { error: onlyRatingError } = await supabase.from('consultations').update({
+                        rating: rating
+                      }).eq('id', consultation.id);
+                      
+                      if (onlyRatingError) throw onlyRatingError;
+                    }
                   }
 
                   toast.success("Thank you for your feedback! 🐾");
@@ -1004,7 +1020,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                   setTimeout(() => navigate('/pet-owner/dashboard'), 500);
                 } catch (err) {
                   console.error("Feedback error:", err);
-                  toast.error("Could not submit feedback. Please try again.");
+                  const errMsg = err?.message || err?.details || (typeof err === 'string' ? err : JSON.stringify(err));
+                  toast.error(errMsg || "Could not submit feedback. Please try again.");
                 } finally {
                   setIsSubmittingRating(false);
                 }

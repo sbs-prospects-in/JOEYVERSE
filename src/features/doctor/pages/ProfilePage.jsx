@@ -4,6 +4,7 @@ import { ArrowLeft, User, Mail, Settings, Edit3, Award, Save, X, MapPin, Globe, 
 import { useAuthStore } from '../../auth/store/authStore';
 import { supabase } from '../../auth/api/supabase';
 import toast, { Toaster } from 'react-hot-toast';
+import CountryPhoneInput from '../../../components/ui/CountryPhoneInput';
 
 const LANGUAGES = ['English', 'Hindi', 'Bengali', 'Marathi', 'Telugu', 'Tamil', 'Gujarati', 'Kannada', 'Odia', 'Punjabi'];
 const INDIAN_STATES = [
@@ -89,6 +90,19 @@ export default function DoctorProfilePage() {
     }
   };
 
+  const handleDeleteProfile = async () => {
+    if (window.confirm("Are you absolutely sure you want to delete your profile? This action cannot be undone.")) {
+      try {
+        const { error } = await supabase.rpc('delete_user');
+        if (error) throw error;
+        await supabase.auth.signOut();
+        window.location.href = '/';
+      } catch (err) {
+        toast.error("Could not delete profile. Please ensure the RPC function is installed.");
+      }
+    }
+  };
+
   const toggleLanguage = (lang) => {
     setEditData(prev => {
       const langs = prev.languages || [];
@@ -134,7 +148,7 @@ export default function DoctorProfilePage() {
                 <input 
                   type="text" 
                   value={editData.name}
-                  onChange={(e) => setEditData(p => ({...p, name: e.target.value}))}
+                  onChange={(e) => setEditData(p => ({...p, name: e.target.value.replace(/[^a-zA-Z\s]/g, '')}))}
                   className="text-3xl font-black text-slate-900 border-b-2 border-emerald-500 focus:outline-none bg-transparent w-full max-w-sm px-1 py-1"
                   placeholder="Your Name"
                 />
@@ -150,23 +164,7 @@ export default function DoctorProfilePage() {
             </div>
             
             <div className="flex gap-3 mt-4 md:mt-0">
-              {isEditing ? (
-                <>
-                  <button 
-                    onClick={() => { setIsEditing(false); }}
-                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-sm flex items-center gap-2"
-                  >
-                    <X size={16} /> Cancel
-                  </button>
-                  <button 
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <Save size={16} /> {isSaving ? 'Saving...' : 'Save'}
-                  </button>
-                </>
-              ) : (
+              {!isEditing && (
                 <button 
                   onClick={() => setIsEditing(true)}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-sm flex items-center gap-2"
@@ -201,11 +199,9 @@ export default function DoctorProfilePage() {
                   <>
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block font-semibold">Phone</label>
-                      <input
-                        value={editData.phone}
-                        onChange={e => setEditData(p => ({...p, phone: e.target.value}))}
-                        placeholder="+91 98765 43210"
-                        className="font-semibold text-slate-800 border-b border-slate-300 focus:border-emerald-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
+                      <CountryPhoneInput
+                        defaultValue={editData.phone}
+                        onChange={(val) => setEditData(p => ({...p, phone: val}))}
                       />
                     </div>
                     <div>
@@ -218,11 +214,14 @@ export default function DoctorProfilePage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-500 mb-1 block font-semibold">Experience</label>
+                      <label className="text-xs text-slate-500 mb-1 block font-semibold">Experience (Years)</label>
                       <input
-                        value={editData.experience}
+                        type="number"
+                        min="0"
+                        max="70"
+                        value={editData.experience?.toString().replace(/[^0-9]/g, '') || ''}
                         onChange={e => setEditData(p => ({...p, experience: e.target.value}))}
-                        placeholder="5+ years"
+                        placeholder="e.g. 5"
                         className="font-semibold text-slate-800 border-b border-slate-300 focus:border-emerald-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
                       />
                     </div>
@@ -257,7 +256,7 @@ export default function DoctorProfilePage() {
                     )}
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Experience</p>
-                      <p className="font-semibold text-slate-800 text-sm">{profile?.experience || '5+ Years'}</p>
+                      <p className="font-semibold text-slate-800 text-sm">{profile?.experience || '0'} Years</p>
                     </div>
                     {profile?.about && (
                       <div>
@@ -282,7 +281,7 @@ export default function DoctorProfilePage() {
                       <label className="text-xs text-slate-500 mb-1 block font-semibold">City</label>
                       <input
                         value={editData.city}
-                        onChange={e => setEditData(p => ({...p, city: e.target.value}))}
+                        onChange={e => setEditData(p => ({...p, city: e.target.value.replace(/[^a-zA-Z\s]/g, '')}))}
                         placeholder="Mumbai"
                         className="font-semibold text-slate-800 border-b border-slate-300 focus:border-emerald-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
                       />

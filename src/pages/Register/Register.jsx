@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/store/authStore';
 import toast, { Toaster } from 'react-hot-toast';
-import { User, Mail, Lock, PawPrint, Heart, Sparkles, Phone, FileText, Stethoscope } from 'lucide-react';
+import { User, Mail, Lock, PawPrint, Heart, Sparkles, FileText, Stethoscope } from 'lucide-react';
+import CountryPhoneInput from '../../components/ui/CountryPhoneInput';
 
 function BoneSVG({ className }) {
   return (
@@ -136,10 +137,17 @@ export default function Register() {
             const result = await signup(email, password, role, additionalData);
             
             if (result.success) {
-              if (role === 'doctor') {
-                navigate("/doctor/dashboard");
+              if (result.session) {
+                // If they have a session immediately, they don't need email verification (or it's disabled)
+                if (role === 'doctor') {
+                  navigate("/doctor/dashboard");
+                } else {
+                  navigate("/pet-owner/dashboard");
+                }
               } else {
-                navigate("/pet-owner/dashboard");
+                // Supabase created the user but no session -> email verification is required
+                toast.success("Registration successful! Please check your email to verify your account.");
+                setTimeout(() => navigate('/signin'), 3000);
               }
             } else {
               toast.error(result.error?.message || "Registration failed");
@@ -185,6 +193,7 @@ export default function Register() {
                 placeholder="Dr. Mark Olsen" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
+                onInput={(e) => e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '')}
               />
             </div>
           </div>
@@ -255,16 +264,7 @@ export default function Register() {
                 <label htmlFor="registerPhone" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
                   Phone Number
                 </label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-                  <input 
-                    type="tel" 
-                    id="registerPhone" 
-                    placeholder="+1 (555) 000-0000" 
-                    className="w-full bg-white/60 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
-                    required={role === 'doctor'} 
-                  />
-                </div>
+                <CountryPhoneInput id="registerPhone" required={role === 'doctor'} />
               </div>
 
               {/* License Number input */}
@@ -308,15 +308,7 @@ export default function Register() {
               <label htmlFor="registerPhone" className="text-[0.65rem] font-black text-slate-600 uppercase tracking-widest pl-1">
                 Phone Number (Optional)
               </label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-                <input 
-                  type="tel" 
-                  id="registerPhone" 
-                  placeholder="+1 (555) 000-0000" 
-                  className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
-                />
-              </div>
+              <CountryPhoneInput id="registerPhone" />
             </div>
           )}
 

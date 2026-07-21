@@ -1256,6 +1256,8 @@ export default function PetOwnerDashboard() {
                     <div className="flex gap-2">
                       <input
                         type="number"
+                        min="0"
+                        max="40"
                         value={newPet.age}
                         onChange={(e) =>
                           setNewPet({ ...newPet, age: e.target.value })

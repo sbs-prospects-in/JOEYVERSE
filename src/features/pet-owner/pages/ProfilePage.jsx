@@ -4,6 +4,7 @@ import { ArrowLeft, User, MapPin, Edit3, Save, X, PawPrint, Phone } from 'lucide
 import { useAuthStore } from '../../auth/store/authStore';
 import { supabase } from '../../auth/api/supabase';
 import toast, { Toaster } from 'react-hot-toast';
+import CountryPhoneInput from '../../../components/ui/CountryPhoneInput';
 
 const INDIAN_STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat',
@@ -71,6 +72,19 @@ export default function PetOwnerProfilePage() {
       toast.error(err.message || "Failed to save");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    if (window.confirm("Are you absolutely sure you want to delete your profile? This action cannot be undone.")) {
+      try {
+        const { error } = await supabase.rpc('delete_user');
+        if (error) throw error;
+        await supabase.auth.signOut();
+        window.location.href = '/';
+      } catch (err) {
+        toast.error("Could not delete profile. Please ensure the RPC function is installed.");
+      }
     }
   };
 
@@ -175,17 +189,15 @@ export default function PetOwnerProfilePage() {
                       <label className="text-xs text-slate-500 mb-1 block font-semibold">Full Name</label>
                       <input
                         value={editData.name}
-                        onChange={e => setEditData(p => ({...p, name: e.target.value}))}
+                        onChange={e => setEditData(p => ({...p, name: e.target.value.replace(/[^a-zA-Z\s]/g, '')}))}
                         className="font-semibold text-slate-800 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
                       />
                     </div>
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block font-semibold">Phone</label>
-                      <input
-                        value={editData.phone}
-                        onChange={e => setEditData(p => ({...p, phone: e.target.value}))}
-                        placeholder="+91 98765 43210"
-                        className="font-semibold text-slate-800 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
+                      <CountryPhoneInput
+                        defaultValue={editData.phone}
+                        onChange={(val) => setEditData(p => ({...p, phone: val}))}
                       />
                     </div>
                   </>
@@ -223,7 +235,7 @@ export default function PetOwnerProfilePage() {
                       <label className="text-xs text-slate-500 mb-1 block font-semibold">City</label>
                       <input
                         value={editData.city}
-                        onChange={e => setEditData(p => ({...p, city: e.target.value}))}
+                        onChange={e => setEditData(p => ({...p, city: e.target.value.replace(/[^a-zA-Z\s]/g, '')}))}
                         placeholder="Mumbai"
                         className="font-semibold text-slate-800 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
                       />
@@ -257,6 +269,15 @@ export default function PetOwnerProfilePage() {
             </div>
           </div>
         </div>
+
+        {isEditing && (
+          <button 
+            onClick={handleDeleteProfile}
+            className="w-full py-4 mb-3 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            Delete Account Forever
+          </button>
+        )}
 
         <button 
           onClick={async () => {

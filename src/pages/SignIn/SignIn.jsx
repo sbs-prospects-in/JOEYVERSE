@@ -28,7 +28,7 @@ function FishSVG({ className }) {
 
 export default function SignIn() {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthStore();
+  const { login, sendPasswordResetEmail, isLoading } = useAuthStore();
   return (
     <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
       <Toaster position="top-right" />
@@ -159,7 +159,20 @@ export default function SignIn() {
               </label>
               <a 
                 href="#forgot" 
-                onClick={(e) => { e.preventDefault(); alert("Password reset code sent to your email!"); }} 
+                onClick={async (e) => { 
+                  e.preventDefault(); 
+                  const email = document.getElementById('loginEmail').value;
+                  if (!email) {
+                    toast.error("Please enter your email address first!");
+                    return;
+                  }
+                  const result = await sendPasswordResetEmail(email);
+                  if (result.success) {
+                    toast.success("Password reset link sent to your email!");
+                  } else {
+                    toast.error(result.error || "Failed to send reset email.");
+                  }
+                }} 
                 className="text-[0.68rem] font-black text-rose-500 hover:text-rose-600 transition-colors uppercase tracking-wider"
               >
                 Forgot?
