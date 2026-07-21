@@ -160,20 +160,19 @@ export default function DoctorDashboard() {
 
     // 4b. Fetch Appointments
     const { data: apptData } = await supabase
-      .from("appointments")
-      .select(
-        "id, status, scheduled_time, owner_id, pets(name), profiles(full_name)",
-      )
+      .from("consultations")
+      .select("id, status, scheduled_at, owner_id, pet_id")
       .eq("doctor_id", user.id)
-      .eq("status", "pending")
-      .order("scheduled_time", { ascending: true });
+      .eq("consultation_type", "scheduled")
+      .eq("status", "PENDING")
+      .order("scheduled_at", { ascending: true });
 
     if (apptData) {
+      const enrichedAppts = await enrichWithOwnerNames(apptData);
       setAppointments(
-        apptData.map((a) => ({
+        enrichedAppts.map((a) => ({
           ...a,
-          owner: { name: a.profiles?.full_name || "Pet Owner" },
-          pet: { name: a.pets?.name || "Pet" },
+          scheduled_time: a.scheduled_at,
         })),
       );
     }
@@ -471,18 +470,20 @@ export default function DoctorDashboard() {
   };
 
   const handleAppointmentAction = async (apptId, action) => {
+    try {
       const { error } = await supabase
-        .from("appointments")
-        .update({ status: action.toLowerCase() })
+        .from("consultations")
+        .update({ status: action.toUpperCase() })
         .eq("id", apptId);
 
-      if (!error) {
-        toast.success(`Appointment ${action.toLowerCase()}!`);
-        fetchDashboardData();
-      } else {
-        toast.error("Failed to update appointment.");
-      }
-    };
+      if (error) throw error;
+      toast.success(`Appointment ${action.toLowerCase()}!`);
+      fetchDashboardData();
+    } catch (err) {
+      toast.error("Failed to update appointment.");
+      console.error(err);
+    }
+  };
 
     const earningsData = React.useMemo(() => {
       if (!history || history.length === 0) return [];

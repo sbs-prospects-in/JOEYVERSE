@@ -36,12 +36,18 @@ export default function SchedulingModal({ doctorId, doctorName, onClose }) {
     setIsSubmitting(true);
     try {
       const scheduledTime = new Date(`${date}T${time}`).toISOString();
-      const { error } = await supabase.from('appointments').insert({
+      // Get the doctor's per_minute_rate
+      const { data: docData } = await supabase.from('doctor_profiles').select('per_minute_rate').eq('id', doctorId).single();
+      const per_minute_rate = docData?.per_minute_rate || 50;
+
+      const { error } = await supabase.from('consultations').insert({
         owner_id: user.id,
         doctor_id: doctorId,
         pet_id: selectedPet,
-        scheduled_time: scheduledTime,
-        status: 'pending'
+        consultation_type: 'scheduled',
+        scheduled_at: scheduledTime,
+        status: 'PENDING',
+        per_minute_rate
       });
 
       if (error) throw error;

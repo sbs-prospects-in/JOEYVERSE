@@ -55,14 +55,15 @@ export default function BookingPage() {
     const scheduledAt = new Date().toISOString();
 
     const { error } = await supabase
-      .from('appointments')
+      .from('consultations')
       .insert([
         {
           doctor_id: doctorId,
           owner_id: user.id,
           pet_id: selectedPet,
-          scheduled_at: scheduledAt,
-          status: 'PENDING'
+          consultation_type: 'instant',
+          status: 'RINGING',
+          per_minute_rate: doctor.per_minute_rate || 50
         }
       ]);
 
