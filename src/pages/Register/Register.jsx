@@ -150,7 +150,15 @@ export default function Register() {
                 setTimeout(() => navigate('/signin'), 3000);
               }
             } else {
-              toast.error(result.error?.message || "Registration failed");
+              let errorMsg = result.error?.message || "Registration failed";
+              if (errorMsg.includes("User already registered")) {
+                errorMsg = "An account with this email already exists. Please sign in.";
+              } else if (errorMsg.includes("Failed to fetch") || result.error?.status === 0) {
+                errorMsg = "Network error. Please check your connection.";
+              } else if (typeof errorMsg !== 'string') {
+                errorMsg = "An unexpected error occurred. Please try again.";
+              }
+              toast.error(errorMsg);
             }
           }}
           className="flex flex-col gap-4"
