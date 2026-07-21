@@ -272,29 +272,28 @@ export default function AdminDashboardPage() {
                             <div className="text-xs text-slate-500">{doc.phone || 'No Phone'}</div>
                           </td>
                           <td className="px-6 py-4">
-                            {doc.verified ? (
+                            {doc.is_verified ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
                                 <CheckCircle size={12} /> Approved
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-200">
-                                Pending
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-50 text-slate-500 border border-slate-200">
+                                <CheckCircle size={12} /> Pending
                               </span>
                             )}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center justify-end gap-2">
-                              {!doc.verified && (
+                              {!doc.is_verified ? (
                                 <button 
-                                  onClick={() => handleUpdateDoctorStatus(doc.id, { verified: true })}
+                                  onClick={() => handleUpdateDoctorStatus(doc.id, { is_verified: true })}
                                   className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold text-xs transition-colors"
                                 >
                                   Approve
                                 </button>
-                              )}
-                              {doc.verified && (
+                              ) : (
                                 <button 
-                                  onClick={() => handleUpdateDoctorStatus(doc.id, { verified: false })}
+                                  onClick={() => handleUpdateDoctorStatus(doc.id, { is_verified: false })}
                                   className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors"
                                 >
                                   Revoke
