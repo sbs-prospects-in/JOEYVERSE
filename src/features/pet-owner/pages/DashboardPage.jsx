@@ -237,19 +237,16 @@ export default function PetOwnerDashboard() {
             );
             if (
               payload.new?.status === "ACTIVE" &&
-              oldCons?.status === "RINGING"
+              oldCons?.status !== "ACTIVE"
             ) {
               toast.success("The doctor connected! Joining chat...", {
                 duration: 4000,
-                icon: "🟢",
+                icon: "🩺",
               });
-              setTimeout(
-                () => navigate(`/pet-owner/chat/${payload.new.id}`),
-                1000,
-              );
+              navigate(`/pet-owner/chat/${payload.new.id}`);
             } else if (
               payload.new?.status === "REJECTED" &&
-              oldCons?.status === "RINGING"
+              oldCons?.status !== "REJECTED"
             ) {
               toast.error("The doctor is busy and declined the call.", {
                 duration: 4000,
@@ -302,7 +299,7 @@ export default function PetOwnerDashboard() {
                     duration: 4000,
                     icon: "🟢",
                   });
-                  setTimeout(() => navigate(`/pet-owner/chat/${u.id}`), 1000);
+                  navigate(`/pet-owner/chat/${u.id}`);
                 } else if (u.status === "REJECTED") {
                   toast.error("The doctor is busy and declined the call.", {
                     duration: 4000,
@@ -313,7 +310,7 @@ export default function PetOwnerDashboard() {
             if (changed) fetchConsultations();
           }
         }
-      }, 30000);
+      }, 2000);
 
       return () => {
         supabase.removeChannel(channel);

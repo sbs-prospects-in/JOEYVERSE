@@ -153,7 +153,7 @@ export default function Doctors() {
         if (data) {
           handleStatusChange(data.status);
         }
-      }, 30000);
+      }, 2000);
 
       const handleStatusChange = (status) => {
         if (status === 'ACTIVE') {

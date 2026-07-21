@@ -322,10 +322,10 @@ export default function DoctorDashboard() {
       })
       .subscribe();
 
-    // Fallback polling every 30 seconds
+    // Fallback polling every 2 seconds
     const pollInterval = setInterval(() => {
       fetchDashboardData();
-    }, 30000);
+    }, 2000);
 
     return () => {
       supabase.removeChannel(queueChannel);
