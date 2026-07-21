@@ -128,7 +128,13 @@ export default function SignIn() {
                 navigate("/pet-owner/dashboard");
               }
             } else {
-              toast.error(result.error?.message || "Login failed");
+              let errorMsg = result.error?.message || "Login failed";
+              if (errorMsg.includes("Invalid login credentials")) {
+                errorMsg = "Incorrect email or password. Please check your credentials and try again.";
+              } else if (errorMsg.includes("Failed to fetch") || result.error?.status === 0) {
+                errorMsg = "Network error. Please check your connection.";
+              }
+              toast.error(errorMsg);
             }
           }}
           className="flex flex-col gap-5"
@@ -183,9 +189,10 @@ export default function SignIn() {
               <input 
                 type="password" 
                 id="loginPassword" 
-                placeholder="••••••••••••" 
+                placeholder="••••••••" 
                 className="w-full bg-white/40 border border-slate-200/80 focus:border-[#f2687c] focus:bg-white pl-11 pr-4 py-3.5 rounded-xl outline-none transition-all text-sm text-slate-700 shadow-sm"
                 required 
+                minLength={6}
               />
             </div>
           </div>
