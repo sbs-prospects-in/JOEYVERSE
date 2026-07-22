@@ -26,6 +26,7 @@ export default function Doctors() {
 
   // Wishlist State
   const [wishlistIds, setWishlistIds] = useState(new Set());
+  const [wishlistLoading, setWishlistLoading] = useState(new Set());
 
   // Fetch wishlists
   useEffect(() => {
@@ -45,6 +46,8 @@ export default function Doctors() {
       return;
     }
     
+    setWishlistLoading(prev => new Set(prev).add(doctorId));
+
     const isWishlisted = wishlistIds.has(doctorId);
     if (isWishlisted) {
       const { error } = await supabase.from('wishlists').delete().match({ user_id: user.id, doctor_id: doctorId });
@@ -57,18 +60,32 @@ export default function Doctors() {
         toast.success("Removed from wishlist");
       }
     } else {
-      const { error } = await supabase.from('wishlists').insert({ user_id: user.id, doctor_id: doctorId });
-      if (!error || error.code === '23505') { // 23505 is unique violation, effectively meaning it's already there
-        setWishlistIds(prev => {
-          const next = new Set(prev);
-          next.add(doctorId);
-          return next;
-        });
-        if (!error) toast.success("Saved to wishlist");
+      // Check if entry already exists before inserting
+      const { data: existing } = await supabase.from('wishlists')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('doctor_id', doctorId)
+        .maybeSingle();
+
+      if (existing) {
+        setWishlistIds(prev => new Set(prev).add(doctorId));
+        toast.success("Saved to wishlist");
       } else {
-        toast.error("Failed to save to wishlist");
+        const { error } = await supabase.from('wishlists').insert({ user_id: user.id, doctor_id: doctorId });
+        if (!error) {
+          setWishlistIds(prev => new Set(prev).add(doctorId));
+          toast.success("Saved to wishlist");
+        } else {
+          toast.error("Failed to save to wishlist");
+        }
       }
     }
+    
+    setWishlistLoading(prev => {
+      const next = new Set(prev);
+      next.delete(doctorId);
+      return next;
+    });
   };
 
 
@@ -95,32 +112,53 @@ export default function Doctors() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'doctor_profiles' }, fetchDoctors)
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    const availChannel = supabase
+      .channel('public:doctor_availability')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'doctor_availability' }, fetchDoctors)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(availChannel);
+    };
   }, []);
 
   async function fetchDoctors() {
-    const { data, error } = await supabase.from('doctor_profiles').select('*');
+    const [{ data: profiles }, { data: availabilities }, { data: activeCons }] = await Promise.all([
+      supabase.from('doctor_profiles').select('*'),
+      supabase.from('doctor_availability').select('*'),
+      supabase.from('consultations').select('doctor_id').in('status', ['ACTIVE', 'RINGING'])
+    ]);
     
-    // Fetch active/ringing consultations to mark doctors as busy
-    const { data: activeCons } = await supabase
-      .from('consultations')
-      .select('doctor_id')
-      .in('status', ['ACTIVE', 'RINGING']);
-      
     const busyDoctorIds = new Set((activeCons || []).map(c => c.doctor_id));
+    const availabilityMap = {};
+    if (availabilities) {
+      availabilities.forEach(a => availabilityMap[a.doctor_id] = a.current_status);
+    }
 
-    if (data) {
-      const formattedDoctors = data.map(doc => ({
-        id: doc.id,
-        name: doc.name || 'Doctor',
-        specialty: doc.specialization || 'Veterinarian',
-        rating: doc.rating || 4.9,
-        experience: doc.experience_years || 5,
-        fee: doc.per_minute_rate || 10,
-        status: busyDoctorIds.has(doc.id) ? 'BUSY' : (doc.status || 'OFFLINE'),
-        bio: doc.about || '',
-        img: (doc.email || '').includes('anjali') ? '/images/dr-anjali.png' : '/images/dr-marcus.png'
-      }));
+    if (profiles) {
+      const formattedDoctors = profiles.map(doc => {
+        let status = 'OFFLINE';
+        const currentStatus = availabilityMap[doc.id];
+        
+        if (busyDoctorIds.has(doc.id) || currentStatus === 'In Consultation') {
+          status = 'BUSY';
+        } else if (currentStatus === 'Available Now' || currentStatus === 'Accepting Requests') {
+          status = 'ONLINE';
+        }
+
+        return {
+          id: doc.id,
+          name: doc.name || 'Doctor',
+          specialty: doc.specialization || 'Veterinarian',
+          rating: doc.rating || 4.9,
+          experience: doc.experience_years || 5,
+          fee: doc.per_minute_rate || 10,
+          status: status,
+          bio: doc.about || '',
+          img: (doc.email || '').includes('anjali') ? '/images/dr-anjali.png' : '/images/dr-marcus.png'
+        };
+      });
       setDoctors(formattedDoctors);
     }
     setLoading(false);
@@ -210,23 +248,16 @@ export default function Doctors() {
       return;
     }
 
-    // Check if user has any pets registered
-    if (myPets.length === 0) {
-      toast((t) => (
-        <span className="flex items-center gap-3">
-          <span>Please add a pet first before consulting a doctor.</span>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id);
-              navigate('/pet-owner/dashboard');
-            }}
-            className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-700 whitespace-nowrap"
-          >
-            Add Pet
-          </button>
-        </span>
-      ), { duration: 5000, icon: '🐾' });
+    // Check if user has any pets registered by querying DB
+    const { data: petData } = await supabase.from('pets').select('id, name').eq('owner_id', user.id);
+    
+    if (!petData || petData.length === 0) {
+      toast.error("Please add a pet first before consulting a doctor.");
+      setTimeout(() => navigate('/pet-owner/dashboard'), 1500);
       return;
+    } else {
+      setMyPets(petData);
+      setSelectedPetId(petData[0].id);
     }
     
     try {
@@ -355,7 +386,8 @@ export default function Doctors() {
                     </div>
                     <button 
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(doc.id); }}
-                      className="absolute top-4 right-4 z-30 p-2 rounded-full bg-white/80 backdrop-blur-sm border border-slate-100 shadow-sm hover:bg-white hover:scale-110 transition-all text-rose-500"
+                      disabled={wishlistLoading.has(doc.id)}
+                      className="absolute top-4 right-4 z-30 p-2 rounded-full bg-white/80 backdrop-blur-sm border border-slate-100 shadow-sm hover:bg-white hover:scale-110 transition-all text-rose-500 disabled:opacity-50 disabled:hover:scale-100"
                     >
                       <Heart size={16} fill={wishlistIds.has(doc.id) ? "currentColor" : "none"} strokeWidth={wishlistIds.has(doc.id) ? 0 : 2} />
                     </button>

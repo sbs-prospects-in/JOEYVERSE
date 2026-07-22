@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { PawPrint, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/store/authStore';
 import { useModal } from '../../context/ModalContext';
+import { Bell } from 'lucide-react';
+import { supabase } from '../../features/auth/api/supabase';
 
 const NAV_LINKS = [
   { label: 'Home', href: '/', bgActive: 'bg-rose-100 text-rose-700 border-rose-200/50 shadow-sm rotate-[-1.5deg]', hoverStyle: 'hover:bg-rose-50 hover:text-rose-600' },
@@ -20,6 +22,56 @@ export default function Navbar() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (!error && data) {
+        setNotifications(data);
+        setUnreadCount(data.filter(n => !n.is_read).length);
+      }
+    };
+
+    fetchNotifications();
+
+    const channel = supabase
+      .channel('public:notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, payload => {
+        setNotifications(prev => [payload.new, ...prev].slice(0, 10));
+        setUnreadCount(prev => prev + 1);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const markAsRead = async () => {
+    if (unreadCount === 0 || !user) return;
+    
+    setUnreadCount(0);
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    
+    if (unreadIds.length > 0) {
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .in('id', unreadIds);
+    }
+  };
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -114,6 +166,48 @@ export default function Navbar() {
                 >
                   Dashboard
                 </Link>
+                
+                {/* Notifications Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowNotifications(!showNotifications);
+                      if (!showNotifications) markAsRead();
+                    }}
+                    className="p-2 rounded-full hover:bg-slate-100 transition-colors relative"
+                  >
+                    <Bell size={20} className="text-slate-600" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0 right-0 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  
+                  {showNotifications && (
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50">
+                      <div className="p-3 border-b border-slate-100 bg-slate-50">
+                        <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="p-4 text-center text-slate-500 text-sm">
+                            No notifications yet
+                          </div>
+                        ) : (
+                          notifications.map(notif => (
+                            <div key={notif.id} className={`p-3 border-b border-slate-50 text-sm ${!notif.is_read ? 'bg-indigo-50/30' : ''}`}>
+                              <p className="text-slate-700">{notif.message}</p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                {new Date(notif.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <Link

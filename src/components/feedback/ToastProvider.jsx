@@ -1,10 +1,20 @@
 import React from 'react';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, ToastBar } from 'react-hot-toast';
 
 export default function ToastProvider({ children }) {
   return (
     <>
       {children}
+      <style>{`
+        @keyframes customSlideIn {
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes customSlideOut {
+          from { transform: translateY(0); opacity: 1; }
+          to { transform: translateY(-100%); opacity: 0; }
+        }
+      `}</style>
       <Toaster
         position="top-center"
         toastOptions={{
@@ -34,7 +44,19 @@ export default function ToastProvider({ children }) {
             },
           },
         }}
-      />
+      >
+        {(t) => (
+          <div
+            style={{
+              animation: t.visible
+                ? 'customSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                : 'customSlideOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            }}
+          >
+            <ToastBar toast={t} />
+          </div>
+        )}
+      </Toaster>
     </>
   );
 }

@@ -143,22 +143,29 @@ export default function ChatPage() {
       const end = new Date(endedAt).getTime();
       let seconds = Math.floor((end - start) / 1000);
       if (seconds < 0) seconds = 0;
-      const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-      const finalFee = intervals * consultation.per_minute_rate;
+      const intervals = Math.max(1, Math.ceil(seconds / 60));
       
-      if (finalFee > 0) {
-        const { error: walletError } = await supabase.rpc('wallet_deduct', {
-          p_user_id: consultation.owner_id,
-          p_amount: finalFee,
-          p_description: `Consultation fee for ${consultation.id}`
-        });
-        if (walletError) console.error("Wallet deduction error:", walletError);
-      }
-    } catch (err) {
-      console.error("Error calculating or deducting fee:", err);
-    }
+      await supabase.from('consultations').update({ status: 'COMPLETED', ended_at: endedAt }).eq('id', id);
 
-    await supabase.from('consultations').update({ status: 'COMPLETED', ended_at: endedAt }).eq('id', id);
+      fetch('/api/billing/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          consultationId: id,
+          petOwnerId: consultation.owner_id,
+          doctorId: consultation.doctor_id,
+          durationMinutes: intervals
+        })
+      })
+      .then(res => res.json())
+      .then(data => console.log('Billing Processed:', data))
+      .catch(err => console.error('Billing Error:', err));
+      
+    } catch (err) {
+      console.error("Error ending consultation:", err);
+    }
     
     if (pageChannelRef.current) {
       pageChannelRef.current.send({

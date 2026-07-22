@@ -162,10 +162,9 @@ export default function DoctorDashboard() {
 
       // 4b. Fetch Appointments
       const { data: apptData } = await supabase
-        .from("consultations")
+        .from("appointments")
         .select("id, status, scheduled_at, owner_id, pet_id")
         .eq("doctor_id", user.id)
-        .eq("consultation_type", "scheduled")
         .eq("status", "PENDING")
         .order("scheduled_at", { ascending: true });
 
@@ -417,9 +416,11 @@ export default function DoctorDashboard() {
 
   const handleAppointmentAction = async (apptId, action) => {
     try {
+      // For appointments table we use 'REJECTED' or 'ACCEPTED_PAYMENT_PENDING' etc based on the action, assuming action is APPROVED or REJECTED
+      const newStatus = action.toUpperCase() === 'APPROVED' ? 'ACCEPTED_PAYMENT_PENDING' : action.toUpperCase();
       const { error } = await supabase
-        .from("consultations")
-        .update({ status: action.toUpperCase() })
+        .from("appointments")
+        .update({ status: newStatus })
         .eq("id", apptId);
 
       if (error) throw error;
@@ -739,7 +740,7 @@ export default function DoctorDashboard() {
                   )}
                 </div>
                 <h3 className="text-3xl font-black text-slate-900">
-                  ₹{earningsSummary[earningsFilter].toLocaleString()}
+                  ₹{earningsStats[earningsFilter]?.toLocaleString() || 0}
                 </h3>
               </div>
               <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">

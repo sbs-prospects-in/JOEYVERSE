@@ -209,6 +209,102 @@ app.post('/api/wallet/deduct', async (req, res) => {
 });
 
 
+// 4. Process Consultation Billing (70/30 Split)
+app.post('/api/billing/process', async (req, res) => {
+  try {
+    const { consultationId, petOwnerId, doctorId, durationMinutes } = req.body;
+    
+    if (!consultationId || !petOwnerId || !doctorId || durationMinutes === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) return res.status(500).json({ error: 'Server misconfiguration' });
+
+    const supabaseClient = createClient(process.env.VITE_SUPABASE_URL, serviceKey);
+
+    const { data: billingResult, error } = await supabaseClient.rpc('process_consultation_billing', {
+      p_consultation_id: consultationId,
+      p_pet_owner_id: petOwnerId,
+      p_doctor_id: doctorId,
+      p_duration_minutes: parseInt(durationMinutes, 10)
+    });
+
+    if (error) throw error;
+
+    res.json(billingResult);
+  } catch (error) {
+    console.error('Billing process error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. Admin: Approve Doctor Rate
+app.post('/api/admin/approve-rate', async (req, res) => {
+  try {
+    const { doctorId } = req.body;
+    if (!doctorId) return res.status(400).json({ error: 'Missing doctorId' });
+
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) return res.status(500).json({ error: 'Server misconfiguration' });
+
+    const supabaseClient = createClient(process.env.VITE_SUPABASE_URL, serviceKey);
+
+    // Fetch the pending rate
+    const { data: doctor, error: fetchError } = await supabaseClient
+      .from('doctor_profiles')
+      .select('pending_rate_request')
+      .eq('id', doctorId)
+      .single();
+
+    if (fetchError || !doctor) throw fetchError || new Error('Doctor not found');
+    if (doctor.pending_rate_request === null) return res.status(400).json({ error: 'No pending rate request' });
+
+    // Approve the rate
+    const { error: updateError } = await supabaseClient
+      .from('doctor_profiles')
+      .update({
+        per_minute_rate: doctor.pending_rate_request,
+        pending_rate_request: null,
+        rate_status: 'Approved'
+      })
+      .eq('id', doctorId);
+
+    if (updateError) throw updateError;
+    res.json({ success: true, message: 'Rate approved successfully' });
+  } catch (error) {
+    console.error('Approve rate error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 6. Admin: Reject Doctor Rate
+app.post('/api/admin/reject-rate', async (req, res) => {
+  try {
+    const { doctorId } = req.body;
+    if (!doctorId) return res.status(400).json({ error: 'Missing doctorId' });
+
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) return res.status(500).json({ error: 'Server misconfiguration' });
+
+    const supabaseClient = createClient(process.env.VITE_SUPABASE_URL, serviceKey);
+
+    const { error: updateError } = await supabaseClient
+      .from('doctor_profiles')
+      .update({
+        rate_status: 'Rejected',
+        pending_rate_request: null
+      })
+      .eq('id', doctorId);
+
+    if (updateError) throw updateError;
+    res.json({ success: true, message: 'Rate request rejected' });
+  } catch (error) {
+    console.error('Reject rate error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {

@@ -1,4 +1,10 @@
-import React, { useState, useRef } from 'react';
+const fs = require('fs');
+const path = require('path');
+
+const srcDir = 'C:/Users/priya/OneDrive/Desktop/anitalk/Anitalk_Website/src/components/chat';
+const chatRoomPath = path.join(srcDir, 'ChatRoom.jsx');
+
+const updatedChatRoomCode = `import React, { useState, useRef } from 'react';
 import { useBlocker, useNavigate } from 'react-router-dom';
 import { supabase } from '../../features/auth/api/supabase';
 import toast from 'react-hot-toast';
@@ -141,7 +147,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
       await ffmpeg.writeFile('input.mp4', await fetchFile(file));
       await ffmpeg.exec(['-i', 'input.mp4', '-vf', 'scale=-2:720', '-b:v', '1M', 'output.mp4']);
       const data = await ffmpeg.readFile('output.mp4');
-      return new File([data.buffer], file.name.replace(/\.[^/.]+$/, "") + "_compressed.mp4", { type: 'video/mp4' });
+      return new File([data.buffer], file.name.replace(/\\.[^/.]+$/, "") + "_compressed.mp4", { type: 'video/mp4' });
     } catch (err) {
       console.warn("FFmpeg compression failed, falling back to original:", err);
       return file;
@@ -183,7 +189,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
         }
       } else if (expectedType === 'video' && f.type.startsWith('video/')) {
         if (f.size > 50 * 1024 * 1024) {
-          toast.error(`Video ${f.name} is too large (max 50MB)`);
+          toast.error(\`Video \${f.name} is too large (max 50MB)\`);
           continue;
         }
         const compressedFile = await compressVideo(f);
@@ -193,7 +199,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
           type: 'video'
         });
       } else {
-        toast.error(`File ${f.name} is not a valid ${expectedType}.`);
+        toast.error(\`File \${f.name} is not a valid \${expectedType}.\`);
       }
     }
 
@@ -223,8 +229,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     for (const { file, type } of filesToUpload) {
       try {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-        const filePath = `${consultation.id}/${fileName}`;
+        const fileName = \`\${Math.random().toString(36).substring(2)}-\${Date.now()}.\${fileExt}\`;
+        const filePath = \`\${consultation.id}/\${fileName}\`;
 
         const { error } = await supabase.storage
           .from('chat-media')
@@ -356,7 +362,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
   };
 
   const sendVoiceMessage = async (base64String) => {
-    const audioPayload = `${base64String}|${recordingTime}`;
+    const audioPayload = \`\${base64String}|\${recordingTime}\`;
     const tempMessage = {
       id: Math.random().toString(),
       consultation_id: consultation.id,
@@ -390,7 +396,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     if (totalSeconds < 0) totalSeconds = 0;
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const s = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
+    return \`\${m}:\${s}\`;
   };
 
   return (
@@ -427,7 +433,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
               <div className="w-px h-8 bg-slate-100" />
               <div className="text-right">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balance</p>
-                <p className={`font-bold ${walletBalance < consultation.per_minute_rate ? 'text-rose-500' : 'text-slate-900'}`}>
+                <p className={\`font-bold \${walletBalance < consultation.per_minute_rate ? 'text-rose-500' : 'text-slate-900'}\`}>
                   ₹{walletBalance}
                 </p>
               </div>
@@ -718,3 +724,6 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     </div>
   );
 }
+`;
+
+fs.writeFileSync(chatRoomPath, updatedChatRoomCode);

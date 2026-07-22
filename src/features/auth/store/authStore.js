@@ -135,10 +135,9 @@ export const useAuthStore = create((set) => ({
         
         const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
         
-        if (serviceId && templateId && publicKey) {
-          try {
+          if (serviceId && templateId && publicKey) {
             console.log("Attempting to send EmailJS welcome email to:", email, "Role:", role);
-            await emailjs.send(serviceId, templateId, {
+            emailjs.send(serviceId, templateId, {
               email: email,
               name: additionalData.name || 'User',
               role: role, // can still be used as a variable
@@ -146,14 +145,16 @@ export const useAuthStore = create((set) => ({
                 ? 'Welcome to Joeyverse! Your Doctor Account Has Been Created' 
                 : 'Welcome to Joeyverse! Your Pet Owner Account is Ready',
               title: `Welcome to Joeyverse!`
-            }, publicKey);
-            console.log("EmailJS welcome email sent successfully!");
-            } catch (e) {
+            }, publicKey)
+            .then(() => {
+              console.log("EmailJS welcome email sent successfully!");
+            })
+            .catch((e) => {
               console.error("Failed to send welcome email via EmailJS", e);
               import('react-hot-toast').then(({ toast }) => {
                 toast.error("EmailJS Error: " + (e.text || e.message || JSON.stringify(e)), { duration: 6000 });
               });
-            }
+            });
           } else {
             console.warn("EmailJS configuration missing. Please check your Vercel Environment Variables.", {serviceId, templateId, publicKey: !!publicKey});
             import('react-hot-toast').then(({ toast }) => {
