@@ -146,12 +146,19 @@ export const useAuthStore = create((set) => ({
                 : 'Welcome to Joeyverse! Your Pet Owner Account is Ready',
               title: `Welcome to Joeyverse!`
             }, publicKey);
-          } catch (e) {
-            console.error("Failed to send welcome email via EmailJS", e);
+            } catch (e) {
+              console.error("Failed to send welcome email via EmailJS", e);
+              import('react-hot-toast').then(({ toast }) => {
+                toast.error("EmailJS Error: " + (e.text || e.message || JSON.stringify(e)), { duration: 6000 });
+              });
+            }
+          } else {
+            import('react-hot-toast').then(({ toast }) => {
+              toast.error("Configuration Error: Missing EmailJS keys in environment variables.", { duration: 6000 });
+            });
           }
-        }
-      
-      return { success: true, role, session: data.session };
+        
+        return { success: true, role, session: data.session };
     } catch (err) {
       set({ error: err.message, isLoading: false });
       return { success: false, error: err };
