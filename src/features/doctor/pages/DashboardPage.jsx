@@ -79,180 +79,184 @@ export default function DoctorDashboard() {
   const fetchDashboardData = async () => {
     if (!user?.id) return;
 
-    // 1. Fetch Doctor Status from doctor_profiles
-    const { data: profile } = await supabase
-      .from("doctor_profiles")
-      .select("status, name")
-      .eq("id", user.id)
-      .single();
+    try {
+      // 1. Fetch Doctor Status from doctor_profiles
+      const { data: profile } = await supabase
+        .from("doctor_profiles")
+        .select("status, name")
+        .eq("id", user.id)
+        .single();
 
-    if (profile) {
-      setIsOnline(profile.status === "ONLINE");
-      setProfileData(profile);
-    }
+      if (profile) {
+        setIsOnline(profile.status === "ONLINE");
+        setProfileData(profile);
+      }
 
-    // Helper to enrich consultations with owner names
-    const enrichWithOwnerNames = async (consultationsData) => {
-      if (!consultationsData || consultationsData.length === 0) return [];
-      
-      const ownerIds = [...new Set(consultationsData.map((c) => c.owner_id).filter(Boolean))];
-      const petIds = [...new Set(consultationsData.map((c) => c.pet_id).filter(Boolean))];
-      
-      const { data: owners } = await supabase
-        .from("owner_profiles")
-        .select("id, name")
-        .in("id", ownerIds);
-
-      let pets = null;
-      if (petIds.length > 0) {
-        const { data } = await supabase
-          .from("pets")
+      // Helper to enrich consultations with owner names
+      const enrichWithOwnerNames = async (consultationsData) => {
+        if (!consultationsData || consultationsData.length === 0) return [];
+        
+        const ownerIds = [...new Set(consultationsData.map((c) => c.owner_id).filter(Boolean))];
+        const petIds = [...new Set(consultationsData.map((c) => c.pet_id).filter(Boolean))];
+        
+        const { data: owners } = await supabase
+          .from("owner_profiles")
           .select("id, name")
-          .in("id", petIds);
-        pets = data;
-      }
+          .in("id", ownerIds);
 
-      const ownerMap = {};
-      if (owners) {
-        owners.forEach((o) => (ownerMap[o.id] = o.name));
-      }
-      
-      const petMap = {};
-      if (pets) {
-        pets.forEach((p) => (petMap[p.id] = p.name));
-      }
-
-      return consultationsData.map((c) => ({
-        ...c,
-        owner: { name: ownerMap[c.owner_id] || "Pet Owner" },
-        pet: c.pet_id && petMap[c.pet_id] ? { name: petMap[c.pet_id] } : null,
-      }));
-    };
-
-    // 2. Fetch Incoming Consultations (RINGING)
-    const { data: reqData } = await supabase
-      .from("consultations")
-      .select(`id, status, created_at, owner_id, primary_concern, pet_id`)
-      .eq("doctor_id", user.id)
-      .eq("status", "RINGING")
-      .order("created_at", { ascending: false });
-
-    if (reqData) setRequests(await enrichWithOwnerNames(reqData));
-
-    // 3. Fetch Active Consultations
-    const { data: activeData } = await supabase
-      .from("consultations")
-      .select(`id, status, created_at, owner_id, primary_concern, pet_id`)
-      .eq("doctor_id", user.id)
-      .eq("status", "ACTIVE")
-      .order("created_at", { ascending: false });
-
-    if (activeData)
-      setActiveConsultations(await enrichWithOwnerNames(activeData));
-
-    // 4. Fetch Waitlist
-    const { data: waitlistData } = await supabase
-      .from("consultations")
-      .select("id, status, created_at, owner_id, primary_concern, pet_id")
-      .eq("doctor_id", user.id)
-      .eq("status", "WAITLIST")
-      .order("created_at", { ascending: true });
-    if (waitlistData) setWaitlist(await enrichWithOwnerNames(waitlistData));
-
-    // 4b. Fetch Appointments
-    const { data: apptData } = await supabase
-      .from("consultations")
-      .select("id, status, scheduled_at, owner_id, pet_id")
-      .eq("doctor_id", user.id)
-      .eq("consultation_type", "scheduled")
-      .eq("status", "PENDING")
-      .order("scheduled_at", { ascending: true });
-
-    if (apptData) {
-      const enrichedAppts = await enrichWithOwnerNames(apptData);
-      setAppointments(
-        enrichedAppts.map((a) => ({
-          ...a,
-          scheduled_time: a.scheduled_at,
-        })),
-      );
-    }
-
-    // 5. Fetch History
-    const { data: historyData } = await supabase
-      .from("consultations")
-      .select(
-        "id, status, created_at, owner_id, started_at, ended_at, per_minute_rate, rating, feedback, primary_concern, pet_id",
-      )
-      .eq("doctor_id", user.id)
-      .in("status", ["COMPLETED", "REJECTED", "CANCELLED"])
-      .order("created_at", { ascending: false });
-
-    if (historyData) {
-      let finalHistory = await enrichWithOwnerNames(historyData.slice(0, 5));
-
-      setHistory(finalHistory);
-
-      const dataToProcess = historyData;
-      // Calculate stats
-      const now = new Date();
-      const today = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-      ).getTime();
-      const oneWeekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-      const oneMonthAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
-
-      let sessionsToday = 0;
-      let eToday = 0,
-        eWeek = 0,
-        eMonth = 0,
-        eTotal = 0;
-      let totalRating = 0;
-      let ratingCount = 0;
-
-      dataToProcess.forEach((c) => {
-        if (c.status === "COMPLETED" && c.started_at && c.ended_at) {
-          const endedTime = new Date(c.ended_at).getTime();
-          const startedTime = new Date(c.started_at).getTime();
-
-          const seconds = Math.floor((endedTime - startedTime) / 1000);
-          const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-          const cost = intervals * c.per_minute_rate;
-
-          eTotal += cost;
-          if (endedTime >= today) {
-            sessionsToday++;
-            eToday += cost;
-          }
-          if (endedTime >= oneWeekAgo) {
-            eWeek += cost;
-          }
-          if (endedTime >= oneMonthAgo) {
-            eMonth += cost;
-          }
+        let pets = null;
+        if (petIds.length > 0) {
+          const { data } = await supabase
+            .from("pets")
+            .select("id, name")
+            .in("id", petIds);
+          pets = data;
         }
 
-        if (c.rating) {
-          totalRating += c.rating;
-          ratingCount++;
+        const ownerMap = {};
+        if (owners) {
+          owners.forEach((o) => (ownerMap[o.id] = o.name));
         }
-      });
+        
+        const petMap = {};
+        if (pets) {
+          pets.forEach((p) => (petMap[p.id] = p.name));
+        }
 
-      setTodaysSessions(sessionsToday);
-      setEarningsSummary({
-        Today: eToday,
-        Weekly: eWeek,
-        Monthly: eMonth,
-        Total: eTotal,
-      });
-      setAverageRating(
-        ratingCount > 0 ? (totalRating / ratingCount).toFixed(1) : "0.0",
-      );
+        return consultationsData.map((c) => ({
+          ...c,
+          owner: { name: ownerMap[c.owner_id] || "Pet Owner" },
+          pet: c.pet_id && petMap[c.pet_id] ? { name: petMap[c.pet_id] } : null,
+        }));
+      };
+
+      // 2. Fetch Incoming Consultations (RINGING)
+      const { data: reqData } = await supabase
+        .from("consultations")
+        .select(`id, status, created_at, owner_id, primary_concern, pet_id`)
+        .eq("doctor_id", user.id)
+        .eq("status", "RINGING")
+        .order("created_at", { ascending: false });
+
+      if (reqData) setRequests(await enrichWithOwnerNames(reqData));
+
+      // 3. Fetch Active Consultations
+      const { data: activeData } = await supabase
+        .from("consultations")
+        .select(`id, status, created_at, owner_id, primary_concern, pet_id`)
+        .eq("doctor_id", user.id)
+        .eq("status", "ACTIVE")
+        .order("created_at", { ascending: false });
+
+      if (activeData)
+        setActiveConsultations(await enrichWithOwnerNames(activeData));
+
+      // 4. Fetch Waitlist
+      const { data: waitlistData } = await supabase
+        .from("consultations")
+        .select("id, status, created_at, owner_id, primary_concern, pet_id")
+        .eq("doctor_id", user.id)
+        .eq("status", "WAITLIST")
+        .order("created_at", { ascending: true });
+      if (waitlistData) setWaitlist(await enrichWithOwnerNames(waitlistData));
+
+      // 4b. Fetch Appointments
+      const { data: apptData } = await supabase
+        .from("consultations")
+        .select("id, status, scheduled_at, owner_id, pet_id")
+        .eq("doctor_id", user.id)
+        .eq("consultation_type", "scheduled")
+        .eq("status", "PENDING")
+        .order("scheduled_at", { ascending: true });
+
+      if (apptData) {
+        const enrichedAppts = await enrichWithOwnerNames(apptData);
+        setAppointments(
+          enrichedAppts.map((a) => ({
+            ...a,
+            scheduled_time: a.scheduled_at,
+          })),
+        );
+      }
+
+      // 5. Fetch History
+      const { data: historyData } = await supabase
+        .from("consultations")
+        .select(
+          "id, status, created_at, owner_id, started_at, ended_at, per_minute_rate, rating, feedback, primary_concern, pet_id",
+        )
+        .eq("doctor_id", user.id)
+        .in("status", ["COMPLETED", "REJECTED", "CANCELLED"])
+        .order("created_at", { ascending: false });
+
+      if (historyData) {
+        let finalHistory = await enrichWithOwnerNames(historyData.slice(0, 5));
+
+        setHistory(finalHistory);
+
+        const dataToProcess = historyData;
+        // Calculate stats
+        const now = new Date();
+        const today = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+        ).getTime();
+        const oneWeekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+        const oneMonthAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+
+        let sessionsToday = 0;
+        let eToday = 0,
+          eWeek = 0,
+          eMonth = 0,
+          eTotal = 0;
+        let totalRating = 0;
+        let ratingCount = 0;
+
+        dataToProcess.forEach((c) => {
+          if (c.status === "COMPLETED" && c.started_at && c.ended_at) {
+            const endedTime = new Date(c.ended_at).getTime();
+            const startedTime = new Date(c.started_at).getTime();
+
+            const seconds = Math.floor((endedTime - startedTime) / 1000);
+            const intervals = Math.ceil(Math.max(seconds, 0) / 60);
+            const cost = intervals * c.per_minute_rate;
+
+            eTotal += cost;
+            if (endedTime >= today) {
+              sessionsToday++;
+              eToday += cost;
+            }
+            if (endedTime >= oneWeekAgo) {
+              eWeek += cost;
+            }
+            if (endedTime >= oneMonthAgo) {
+              eMonth += cost;
+            }
+          }
+
+          if (c.rating) {
+            totalRating += c.rating;
+            ratingCount++;
+          }
+        });
+
+        setTodaysSessions(sessionsToday);
+        setEarningsStats({
+          Today: eToday,
+          Weekly: eWeek,
+          Monthly: eMonth,
+          Total: eTotal,
+        });
+        setAverageRating(
+          ratingCount > 0 ? (totalRating / ratingCount).toFixed(1) : "0.0",
+        );
+      }
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const prevRequestsRef = useRef();
