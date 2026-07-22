@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, MapPin, Edit3, Save, X, PawPrint, Phone } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Edit3, Save, X, PawPrint, Phone, Camera } from 'lucide-react';
 import { useAuthStore } from '../../auth/store/authStore';
 import { supabase } from '../../auth/api/supabase';
 import toast, { Toaster } from 'react-hot-toast';
@@ -22,6 +22,8 @@ export default function PetOwnerProfilePage() {
   const [profile, setProfile] = useState(null);
   const [editData, setEditData] = useState({});
   const [petCount, setPetCount] = useState(0);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -31,6 +33,7 @@ export default function PetOwnerProfilePage() {
         setProfile(data);
         setEditData({
           name: data.name || user?.user_metadata?.name || '',
+          email: user?.email || '',
           phone: data.phone || '',
           city: data.city || '',
           state: data.state || '',
@@ -38,6 +41,7 @@ export default function PetOwnerProfilePage() {
       } else {
         setEditData({
           name: user?.user_metadata?.name || '',
+          email: user?.email || '',
           phone: '',
           city: '',
           state: '',
@@ -49,6 +53,37 @@ export default function PetOwnerProfilePage() {
     loadProfile();
   }, [user?.id]);
 
+  const handleAvatarUpload = async (e) => {
+    try {
+      if (!e.target.files || e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      setUploadingAvatar(true);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `pet-owners/${fileName}`;
+
+      let { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      await supabase.from('owner_profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+      
+      setProfile(p => ({ ...p, avatar_url: publicUrl }));
+      toast.success('Profile photo updated!');
+    } catch (error) {
+      toast.error('Error uploading photo: ' + error.message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!editData.name?.trim()) {
       toast.error("Name cannot be empty");
@@ -57,6 +92,13 @@ export default function PetOwnerProfilePage() {
     setIsSaving(true);
     try {
       await supabase.auth.updateUser({ data: { name: editData.name.trim() } });
+      
+      if (editData.email && editData.email !== user?.email) {
+         const { error: emailError } = await supabase.auth.updateUser({ email: editData.email.trim() });
+         if (emailError) throw emailError;
+         toast.success("Please check both your old and new email inboxes for confirmation links to complete the email change.", { duration: 6000 });
+      }
+
       const { error } = await supabase.from('owner_profiles').update({
         name: editData.name.trim(),
         phone: editData.phone || null,
@@ -65,7 +107,7 @@ export default function PetOwnerProfilePage() {
       }).eq('id', user.id);
 
       if (error) throw error;
-      toast.success("Profile updated! ✅");
+      toast.success("Profile updated! 🐾");
       setProfile(prev => ({ ...prev, ...editData }));
       setIsEditing(false);
     } catch (err) {
@@ -106,12 +148,35 @@ export default function PetOwnerProfilePage() {
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-100 to-indigo-50 z-0" />
           
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 mb-8 mt-12">
-            <div className="w-32 h-32 bg-white rounded-full p-2 shadow-md">
-              <div className="w-full h-full bg-blue-100 rounded-full overflow-hidden flex items-center justify-center text-blue-700 text-4xl font-black">
+            <div className="w-32 h-32 bg-white rounded-full p-2 shadow-md relative group">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleAvatarUpload} 
+                accept="image/*" 
+                className="hidden" 
+              />
+              <div 
+                className={`w-full h-full bg-blue-100 rounded-full overflow-hidden flex items-center justify-center text-blue-700 text-4xl font-black relative ${isEditing ? 'cursor-pointer' : ''}`}
+                onClick={() => isEditing && fileInputRef.current?.click()}
+              >
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
                 ) : (
                   <span>{displayName[0]?.toUpperCase()}</span>
+                )}
+                
+                {isEditing && (
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="text-white mb-1" size={24} />
+                    <span className="text-white text-xs font-bold">Change</span>
+                  </div>
+                )}
+
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </div>
                 )}
               </div>
             </div>
@@ -190,6 +255,15 @@ export default function PetOwnerProfilePage() {
                       <input
                         value={editData.name}
                         onChange={e => setEditData(p => ({...p, name: e.target.value.replace(/[^a-zA-Z\s]/g, '')}))}
+                        className="font-semibold text-slate-800 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block font-semibold">Email Address</label>
+                      <input
+                        type="email"
+                        value={editData.email}
+                        onChange={e => setEditData(p => ({...p, email: e.target.value}))}
                         className="font-semibold text-slate-800 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-1 text-sm"
                       />
                     </div>
