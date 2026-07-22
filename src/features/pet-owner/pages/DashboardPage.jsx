@@ -78,6 +78,7 @@ export default function PetOwnerDashboard() {
   const [isStripeModalOpen, setIsStripeModalOpen] = useState(false);
   const [selectedPet, setSelectedPet] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const [newPet, setNewPet] = useState({
     name: "",
@@ -509,49 +510,62 @@ export default function PetOwnerDashboard() {
             <div className="flex items-center gap-3">
               {/* Notification Bell */}
               <NotificationBell />
-              <div className="relative group" tabIndex="0">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors focus:outline-none">
+              {/* Profile Dropdown */}
+              <div className="relative z-50">
+                <button 
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors focus:outline-none"
+                >
                   <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
                     {displayName[0].toUpperCase()}
                   </div>
-                  <span className="text-sm font-semibold text-slate-700 hidden sm:block">
+                  <span className="text-sm font-bold text-slate-700 hidden sm:block">
                     {displayName}
                   </span>
-                  <ChevronDown size={14} className="text-slate-400" />
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
                 </button>
 
+                {/* Invisible Overlay to catch outside clicks */}
+                {isProfileOpen && (
+                  <div 
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsProfileOpen(false)}
+                  />
+                )}
+
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible focus-within:opacity-100 focus-within:visible transition-all duration-200 z-50 transform origin-top-right">
-                  <div className="p-3 border-b border-slate-100">
-                    <p className="text-sm font-bold text-slate-900">
-                      {displayName}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {user?.email}
-                    </p>
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <PawPrint size={12} className="text-blue-500" />
-                      <span className="text-xs font-medium text-slate-600">
-                        {myPets.length} {myPets.length === 1 ? "Pet" : "Pets"}{" "}
-                        Registered
-                      </span>
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                    <div className="p-3 border-b border-slate-100">
+                      <p className="text-sm font-bold text-slate-900">
+                        {displayName}
+                      </p>
+                      <p className="text-xs font-medium text-slate-500 truncate">
+                        {user?.email}
+                      </p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      <button 
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          navigate('/pet-owner/profile');
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                      >
+                        <User size={16} /> Edit Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      >
+                        <LogOut size={16} /> Sign Out
+                      </button>
                     </div>
                   </div>
-                  <div className="p-2">
-                    <button
-                      onClick={() => navigate("/pet-owner/profile")}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors text-left"
-                    >
-                      <User size={16} /> Edit Profile
-                    </button>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-left"
-                    >
-                      <LogOut size={16} /> Sign Out
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
