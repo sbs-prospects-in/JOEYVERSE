@@ -1354,3 +1354,4 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     </div>
   );
 }
+
