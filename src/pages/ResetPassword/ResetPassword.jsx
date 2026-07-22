@@ -61,7 +61,7 @@ export default function ResetPassword() {
 
   return (
     <div className="pt-28 pb-20 px-4 min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-50">
-      <Toaster position="top-right" />
+      
       
       {/* Background decor */}
       <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-rose-200/20 blur-3xl pointer-events-none z-0" />

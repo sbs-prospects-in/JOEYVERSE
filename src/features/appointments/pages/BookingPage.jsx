@@ -86,7 +86,7 @@ export default function BookingPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#fff', color: '#333' } }} />
+      
       
       <div className="max-w-3xl mx-auto bg-white border border-slate-200 rounded-3xl p-8 shadow-sm relative overflow-hidden hover:shadow-md transition-shadow">
         <div className="absolute top-[-50px] right-[-50px] w-[200px] h-[200px] bg-[#f2687c]/5 blur-[80px] rounded-full pointer-events-none"></div>

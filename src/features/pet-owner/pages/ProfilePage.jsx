@@ -93,7 +93,7 @@ export default function PetOwnerProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-20 pt-8 px-4">
-      <Toaster position="top-center" />
+      
       <div className="max-w-3xl mx-auto">
         <button 
           onClick={() => navigate('/pet-owner/dashboard')}

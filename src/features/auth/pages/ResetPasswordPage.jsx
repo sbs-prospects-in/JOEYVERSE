@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
-      <Toaster position="top-center" toastOptions={{ style: { background: '#fff', color: '#333', borderRadius: '12px', border: '1px solid #e5e7eb' } }} />
+      
       
       {/* Mesh Background Blobs for Visual Glow */}
       <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-rose-200/20 blur-3xl pointer-events-none z-0" />

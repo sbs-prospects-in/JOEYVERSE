@@ -292,7 +292,7 @@ export default function Doctors() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100">
-      <Toaster position="top-center" />
+      
       
       {/* Top Navigation Bar - Matching Dashboard */}
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">

@@ -33,7 +33,7 @@ export default function Register() {
   const { signup, isLoading } = useAuthStore();
   return (
     <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
-      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+      
       
       {/* Mesh Background Blobs for Visual Glow */}
       <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-rose-200/20 blur-3xl pointer-events-none z-0" />

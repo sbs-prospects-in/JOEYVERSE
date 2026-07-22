@@ -125,7 +125,8 @@ export const useAuthStore = create((set) => ({
       
       // Send Welcome Email
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+      // Check for dedicated welcome template first, fallback to generic
+      const templateId = import.meta.env.VITE_EMAILJS_WELCOME_TEMPLATE_ID || import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
       const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
       
       if (serviceId && templateId && publicKey) {
@@ -133,7 +134,9 @@ export const useAuthStore = create((set) => ({
           await emailjs.send(serviceId, templateId, {
             email: email,
             name: additionalData.name || 'User',
-            title: 'Welcome!'
+            role: role, // passing role so they can customize content based on role
+            subject: `Welcome to Joeyverse! Your ${role === 'doctor' ? 'Doctor' : 'Pet Owner'} Account Has Been Created`,
+            title: `Welcome to Joeyverse!`
           }, publicKey);
         } catch (e) {
           console.error("Failed to send welcome email via EmailJS", e);

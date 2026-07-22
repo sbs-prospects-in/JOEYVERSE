@@ -6,18 +6,20 @@ export default function ToastProvider({ children }) {
     <>
       {children}
       <Toaster
-        position="bottom-right"
+        position="top-center"
         toastOptions={{
-          duration: 4000,
+          duration: 3500,
           style: {
             background: '#ffffff',
             color: '#1f2937',
             fontFamily: '-apple-system, BlinkMacSystemFont, "San Francisco", sans-serif',
             fontSize: '14px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+            borderRadius: '999px',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.1)',
             border: '1px solid #f3f4f6',
-            padding: '12px 16px',
+            padding: '12px 24px',
+            marginTop: '16px',
+            maxWidth: '90vw'
           },
           success: {
             iconTheme: {

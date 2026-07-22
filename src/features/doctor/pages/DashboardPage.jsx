@@ -504,7 +504,7 @@ export default function DoctorDashboard() {
 
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-500/20 pb-20 overflow-x-hidden">
-        <Toaster position="top-center" />
+        
 
         {/* Top Navigation / Header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-50">
