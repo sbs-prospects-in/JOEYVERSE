@@ -123,25 +123,33 @@ export const useAuthStore = create((set) => ({
         additionalData.name
       );
       
-      // Send Welcome Email
-      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-      // Check for dedicated welcome template first, fallback to generic
-      const templateId = import.meta.env.VITE_EMAILJS_WELCOME_TEMPLATE_ID || import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-      
-      if (serviceId && templateId && publicKey) {
-        try {
-          await emailjs.send(serviceId, templateId, {
-            email: email,
-            name: additionalData.name || 'User',
-            role: role, // passing role so they can customize content based on role
-            subject: `Welcome to Joeyverse! Your ${role === 'doctor' ? 'Doctor' : 'Pet Owner'} Account Has Been Created`,
-            title: `Welcome to Joeyverse!`
-          }, publicKey);
-        } catch (e) {
-          console.error("Failed to send welcome email via EmailJS", e);
+        // Send Welcome Email
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+        // Check for dedicated role-specific templates first, fallback to generic
+        let templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID; // generic fallback
+        if (role === 'doctor' && import.meta.env.VITE_EMAILJS_DOCTOR_WELCOME_TEMPLATE_ID) {
+          templateId = import.meta.env.VITE_EMAILJS_DOCTOR_WELCOME_TEMPLATE_ID;
+        } else if (role === 'petOwner' && import.meta.env.VITE_EMAILJS_PETOWNER_WELCOME_TEMPLATE_ID) {
+          templateId = import.meta.env.VITE_EMAILJS_PETOWNER_WELCOME_TEMPLATE_ID;
         }
-      }
+        
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+        
+        if (serviceId && templateId && publicKey) {
+          try {
+            await emailjs.send(serviceId, templateId, {
+              email: email,
+              name: additionalData.name || 'User',
+              role: role, // can still be used as a variable
+              subject: role === 'doctor' 
+                ? 'Welcome to Joeyverse! Your Doctor Account Has Been Created' 
+                : 'Welcome to Joeyverse! Your Pet Owner Account is Ready',
+              title: `Welcome to Joeyverse!`
+            }, publicKey);
+          } catch (e) {
+            console.error("Failed to send welcome email via EmailJS", e);
+          }
+        }
       
       return { success: true, role, session: data.session };
     } catch (err) {
