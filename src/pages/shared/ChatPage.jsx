@@ -57,6 +57,7 @@ export default function ChatPage() {
   const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRating, setShowRating] = useState(false);
+  const pageChannelRef = useRef(null);
 
   useEffect(() => {
     const initChat = async () => {
@@ -90,7 +91,9 @@ export default function ChatPage() {
 
     // Listen for consultation updates (like doctor ending it)
     const channel = supabase
-      .channel(`chat_page_consultation_${id}`)
+      .channel(`chat_page_consultation_${id}`, {
+        config: { broadcast: { self: true } }
+      })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
@@ -108,7 +111,20 @@ export default function ChatPage() {
           });
         }
       })
-      .subscribe();
+      .on('broadcast', { event: 'consultation-ended' }, (payload) => {
+        setConsultation(prev => {
+           if (prev && prev.status === 'ACTIVE') {
+               if (userRole === 'petOwner') setShowRating(true);
+               return {...prev, status: 'COMPLETED', ended_at: payload.payload.endedAt};
+           }
+           return prev;
+        });
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          pageChannelRef.current = channel;
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -144,6 +160,14 @@ export default function ChatPage() {
 
     await supabase.from('consultations').update({ status: 'COMPLETED', ended_at: endedAt }).eq('id', id);
     
+    if (pageChannelRef.current) {
+      pageChannelRef.current.send({
+        type: 'broadcast',
+        event: 'consultation-ended',
+        payload: { endedAt }
+      });
+    }
+
     setConsultation(prev => ({...prev, status: 'COMPLETED', ended_at: endedAt}));
     toast.success("Consultation completed!");
     

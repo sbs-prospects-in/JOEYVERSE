@@ -102,7 +102,7 @@ export default function PetOwnerProfilePage() {
           <ArrowLeft size={18} /> Back to Dashboard
         </button>
 
-        <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-sm border border-slate-100 mb-6 relative overflow-hidden">
+        <div className="bg-white rounded-[32px] p-5 sm:p-8 md:p-12 shadow-sm border border-slate-100 mb-6 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-100 to-indigo-50 z-0" />
           
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 mb-8 mt-12">
