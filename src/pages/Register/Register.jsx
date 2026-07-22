@@ -33,7 +33,7 @@ export default function Register() {
   const { signup, isLoading } = useAuthStore();
   return (
     <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1280px] mx-auto min-h-screen flex items-center justify-center relative overflow-hidden">
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       
       {/* Mesh Background Blobs for Visual Glow */}
       <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-rose-200/20 blur-3xl pointer-events-none z-0" />
@@ -150,15 +150,28 @@ export default function Register() {
                 setTimeout(() => navigate('/signin'), 3000);
               }
             } else {
-              let errorMsg = result.error?.message || "Registration failed";
-              if (errorMsg.includes("User already registered")) {
+              let errorMsg = result.error?.message;
+              
+              if (typeof errorMsg !== 'string') {
+                try {
+                  errorMsg = JSON.stringify(result.error) || "Registration failed";
+                } catch (e) {
+                  errorMsg = "Registration failed";
+                }
+              }
+
+              if (errorMsg === "{}" || !errorMsg || errorMsg === "Registration failed") {
+                errorMsg = "Registration failed. Please check your details.";
+              } else if (errorMsg.includes("User already registered")) {
                 errorMsg = "An account with this email already exists. Please sign in.";
               } else if (errorMsg.includes("Failed to fetch") || result.error?.status === 0) {
                 errorMsg = "Network error. Please check your connection.";
-              } else if (typeof errorMsg !== 'string') {
-                errorMsg = "An unexpected error occurred. Please try again.";
+              } else if (errorMsg.includes("Database error")) {
+                errorMsg = "A database error occurred. Please check your inputs.";
               }
-              toast.error(errorMsg);
+
+              toast.dismiss(); // Prevent toasts from stacking and getting stuck on mobile
+              toast.error(String(errorMsg));
             }
           }}
           className="flex flex-col gap-4"
