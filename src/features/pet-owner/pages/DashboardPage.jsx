@@ -509,7 +509,7 @@ export default function PetOwnerDashboard() {
             <div className="flex items-center gap-3">
               {/* Notification Bell */}
               <NotificationBell />
-              <div className="relative group">
+              <div className="relative group" tabIndex="0">
                 <button className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors focus:outline-none">
                   <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
                     {displayName[0].toUpperCase()}
@@ -521,7 +521,7 @@ export default function PetOwnerDashboard() {
                 </button>
 
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible focus-within:opacity-100 focus-within:visible transition-all duration-200 z-50 transform origin-top-right">
                   <div className="p-3 border-b border-slate-100">
                     <p className="text-sm font-bold text-slate-900">
                       {displayName}

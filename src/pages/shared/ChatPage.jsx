@@ -191,25 +191,27 @@ export default function ChatPage() {
   const backLink = userRole === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-8 pt-24 selection:bg-[#f2687c]/20">
+    <div className="h-[100dvh] bg-slate-50 text-slate-900 font-sans pb-0 pt-0 md:pb-8 md:pt-24 selection:bg-[#f2687c]/20 overflow-hidden">
       
+      {showRating && <RatingModal onSubmit={handleRatingSubmit} onClose={handleRatingClose} />}
       
-      <div className="w-full max-w-5xl mx-auto px-4 h-[calc(100dvh-7rem)] flex flex-col">
+      <div className="w-full max-w-5xl mx-auto px-0 md:px-4 h-full md:h-[calc(100dvh-7rem)] flex flex-col">
         
         {/* Sleek Minimal Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 shrink-0">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-0 md:mb-4 shrink-0 px-4 pt-4 pb-2 md:p-0 bg-white md:bg-transparent border-b border-slate-100 md:border-none">
           <div>
             <Link 
               to={backLink} 
-              className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm font-medium mb-5"
+              className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm font-medium mb-2 md:mb-5"
             >
               <ArrowLeft size={16} />
-              Return to Dashboard
+              <span className="hidden md:inline">Return to Dashboard</span>
+              <span className="md:hidden">Back</span>
             </Link>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Live Consult</h1>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wider">
-                <ShieldCheck size={14} /> Encrypted
+              <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tight">Live Consult</h1>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 md:px-3 md:py-1 bg-green-100 text-green-700 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider">
+                <ShieldCheck size={12} className="md:w-3.5 md:h-3.5" /> Encrypted
               </div>
             </div>
           </div>
@@ -217,15 +219,15 @@ export default function ChatPage() {
           {consultation.status === 'ACTIVE' && (
             <button 
               onClick={handleEndConsultation}
-              className="mt-4 md:mt-0 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-200 hover:border-red-500 px-6 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2"
+              className="mt-3 md:mt-0 px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors w-full md:w-auto"
             >
               End Consult
             </button>
           )}
         </div>
 
-        {/* Chat Component Container */}
-        <div className="flex-1 bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden flex flex-col min-h-0">
+        {/* Chat Interface container */}
+        <div className="flex-1 bg-white md:rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none md:border border-slate-200 overflow-hidden flex flex-col relative z-10">
           <ChatRoom 
             consultation={consultation}
             currentUserId={user.id} 

@@ -579,7 +579,7 @@ export default function DoctorDashboard() {
 
               <div className="w-px h-6 bg-slate-200 hidden sm:block" />
 
-              <div className="relative group">
+              <div className="relative group" tabIndex="0">
                 <button className="flex items-center gap-2 px-2 sm:px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors focus:outline-none">
                   <div className="w-6 h-6 rounded-full overflow-hidden">
                     <img
@@ -594,14 +594,14 @@ export default function DoctorDashboard() {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className="text-sm font-semibold text-slate-700 hidden sm:block">
-                    {firstName}
+                  <span className="text-sm font-bold text-slate-700 hidden sm:block">
+                    {fullDisplayName}
                   </span>
                   <ChevronDown size={14} className="text-slate-400" />
                 </button>
 
                 {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-right">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible focus-within:opacity-100 focus-within:visible transition-all duration-200 z-50 transform origin-top-right">
                   <div className="p-3 border-b border-slate-100">
                     <p className="text-sm font-bold text-slate-900">
                       {fullDisplayName}
