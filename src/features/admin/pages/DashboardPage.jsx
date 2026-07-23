@@ -244,6 +244,7 @@ export default function AdminDashboardPage() {
               doctors={doctors} 
               consultations={consultations} 
               totalRevenue={totalRevenue} 
+              revenue={revenue}
             />
           )}
 

@@ -147,17 +147,15 @@ export default function ChatPage() {
       
       await supabase.from('consultations').update({ status: 'COMPLETED', ended_at: endedAt }).eq('id', id);
 
-      supabase.rpc('process_consultation_billing', {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('process_consultation_billing', {
         p_consultation_id: id,
         p_pet_owner_id: consultation.owner_id,
         p_doctor_id: consultation.doctor_id,
         p_duration_minutes: intervals
-      })
-      .then(({ data, error }) => {
-        if (error) console.error('Billing RPC Error:', error);
-        else console.log('Billing Processed:', data);
-      })
-      .catch(err => console.error('Billing Error:', err));
+      });
+      
+      if (rpcError) console.error('Billing RPC Error:', rpcError);
+      else console.log('Billing Processed:', rpcData);
       
     } catch (err) {
       console.error("Error ending consultation:", err);
@@ -216,6 +214,16 @@ export default function ChatPage() {
   const otherPersonName = userRole === 'doctor' ? consultation.owner.name : formattedDoctorName;
   const backLink = userRole === 'doctor' ? '/doctor/dashboard' : '/pet-owner/dashboard';
 
+  const handleBackClick = async (e) => {
+    if (userRole === 'doctor' && consultation?.status === 'ACTIVE') {
+      e.preventDefault();
+      const confirmEnd = window.confirm("You have an active consultation. Do you want to end it and return to the dashboard?");
+      if (confirmEnd) {
+        await handleEndConsultation();
+      }
+    }
+  };
+
   return (
     <div className="h-[100dvh] bg-slate-50 text-slate-900 font-sans pb-0 pt-0 md:pb-8 md:pt-24 selection:bg-[#f2687c]/20 overflow-hidden">
       
@@ -228,6 +236,7 @@ export default function ChatPage() {
           <div>
             <Link 
               to={backLink} 
+              onClick={handleBackClick}
               className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm font-medium mb-2 md:mb-5"
             >
               <ArrowLeft size={16} />

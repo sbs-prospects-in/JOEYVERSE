@@ -5,6 +5,7 @@ import { X, Mic, Volume2 } from 'lucide-react';
 export default function ChatInspector({ consultation, onClose }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMedia, setSelectedMedia] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -104,13 +105,32 @@ export default function ChatInspector({ consultation, onClose }) {
                         ? 'bg-indigo-600 text-white rounded-tr-sm' 
                         : 'bg-white border border-slate-200 text-slate-800 shadow-sm rounded-tl-sm'
                     }`}>
-                      {msg.message_type === 'audio' ? (
+                      {msg.message_type === 'voice' || msg.message_type === 'audio' ? (
                         <div className="flex flex-col gap-2 min-w-[200px]">
                           <div className="flex items-center gap-2">
                             <Volume2 size={16} className={isDoctor ? 'text-indigo-200' : 'text-slate-400'} />
                             <span className="text-xs font-bold">Voice Note</span>
                           </div>
-                          <audio controls src={msg.message_text} className="h-8 w-full max-w-[250px] outline-none" />
+                          <audio controls src={msg.message_text.split('|')[0]} className="h-8 w-full max-w-[250px] outline-none" />
+                        </div>
+                      ) : msg.message_type === 'image' || (msg.file_url && msg.file_url.match(/\.(jpeg|jpg|gif|png)$/i)) ? (
+                        <img 
+                          src={msg.file_url} 
+                          alt="Attachment" 
+                          className="max-w-[200px] rounded-xl cursor-pointer hover:opacity-90 transition-opacity shadow-sm" 
+                          onClick={() => setSelectedMedia({ type: 'image', url: msg.file_url })} 
+                        />
+                      ) : msg.message_type === 'video' || (msg.file_url && msg.file_url.match(/\.(mp4|webm|ogg)$/i)) ? (
+                        <div 
+                          className="relative max-w-[200px] rounded-xl overflow-hidden cursor-pointer group shadow-sm"
+                          onClick={() => setSelectedMedia({ type: 'video', url: msg.file_url })}
+                        >
+                          <video src={msg.file_url} className="w-full bg-black pointer-events-none" />
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                            <div className="w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center">
+                              <Play className="text-white fill-white translate-x-0.5" size={20} />
+                            </div>
+                          </div>
                         </div>
                       ) : (
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message_text}</p>
@@ -136,6 +156,35 @@ export default function ChatInspector({ consultation, onClose }) {
         )}
 
       </div>
+
+      {/* Media Modal */}
+      {selectedMedia && (
+        <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4">
+          <button 
+            onClick={() => setSelectedMedia(null)}
+            className="absolute top-6 right-6 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          >
+            <X size={24} />
+          </button>
+          
+          <div className="relative max-w-4xl max-h-[85vh] w-full flex items-center justify-center">
+            {selectedMedia.type === 'image' ? (
+              <img 
+                src={selectedMedia.url} 
+                alt="Full size attachment" 
+                className="max-w-full max-h-[85vh] object-contain rounded-lg"
+              />
+            ) : (
+              <video 
+                src={selectedMedia.url} 
+                controls 
+                autoPlay
+                className="max-w-full max-h-[85vh] rounded-lg shadow-2xl"
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

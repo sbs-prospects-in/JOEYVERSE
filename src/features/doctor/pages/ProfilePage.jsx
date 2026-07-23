@@ -133,12 +133,12 @@ export default function DoctorProfilePage() {
   const handleDeleteProfile = async () => {
     if (window.confirm("Are you absolutely sure you want to delete your profile? This action cannot be undone.")) {
       try {
-        const { error } = await supabase.rpc('delete_user');
+        const { error } = await supabase.from('doctor_profiles').update({ is_deleted: true }).eq('id', user.id);
         if (error) throw error;
         await supabase.auth.signOut();
         window.location.href = '/';
       } catch (err) {
-        toast.error("Could not delete profile. Please ensure the RPC function is installed.");
+        toast.error("Could not delete profile. Please ensure 'is_deleted' column exists in Supabase.");
       }
     }
   };
@@ -227,13 +227,42 @@ export default function DoctorProfilePage() {
             </div>
             
             <div className="flex gap-3 mt-4 md:mt-0">
-              {!isEditing && (
+              {!isEditing ? (
                 <button 
                   onClick={() => setIsEditing(true)}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-sm flex items-center gap-2"
                 >
                   <Edit3 size={16} /> Edit Profile
                 </button>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => {
+                      setEditData({
+                        name: profile?.name || '',
+                        email: user?.email || '',
+                        phone: profile?.phone || '',
+                        city: profile?.city || '',
+                        state: profile?.state || '',
+                        experience: profile?.experience || '',
+                        qualification: profile?.qualification || '',
+                        about: profile?.about || '',
+                        languages: profile?.languages || ['English']
+                      });
+                      setIsEditing(false);
+                    }}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors text-sm flex items-center gap-2"
+                  >
+                    <X size={16} /> Cancel
+                  </button>
+                  <button 
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors text-sm flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Save size={16} /> {isSaving ? 'Saving...' : 'Save Profile'}
+                  </button>
+                </>
               )}
             </div>
           </div>

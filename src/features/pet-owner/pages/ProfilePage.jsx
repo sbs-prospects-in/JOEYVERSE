@@ -120,12 +120,12 @@ export default function PetOwnerProfilePage() {
   const handleDeleteProfile = async () => {
     if (window.confirm("Are you absolutely sure you want to delete your profile? This action cannot be undone.")) {
       try {
-        const { error } = await supabase.rpc('delete_user');
+        const { error } = await supabase.from('owner_profiles').update({ is_deleted: true }).eq('id', user.id);
         if (error) throw error;
         await supabase.auth.signOut();
         window.location.href = '/';
       } catch (err) {
-        toast.error("Could not delete profile. Please ensure the RPC function is installed.");
+        toast.error("Could not delete profile. Please ensure 'is_deleted' column exists in Supabase.");
       }
     }
   };

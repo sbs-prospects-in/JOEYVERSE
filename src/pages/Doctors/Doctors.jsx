@@ -125,7 +125,7 @@ export default function Doctors() {
 
   async function fetchDoctors() {
     const [{ data: profiles }, { data: availabilities }, { data: activeCons }] = await Promise.all([
-      supabase.from('doctor_profiles').select('*'),
+      supabase.from('doctor_profiles').select('*').neq('is_deleted', true),
       supabase.from('doctor_availability').select('*'),
       supabase.from('consultations').select('doctor_id').in('status', ['ACTIVE', 'RINGING'])
     ]);

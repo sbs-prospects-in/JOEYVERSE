@@ -4,8 +4,9 @@ import { ShieldCheck, Play, Pause, Mic } from 'lucide-react';
 const VoiceMessagePlayer = ({ src, duration: initialDuration }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [actualDuration, setActualDuration] = useState(initialDuration || 0);
   const audioRef = useRef(null);
-  const duration = initialDuration || 0;
+  const duration = actualDuration > 0 ? actualDuration : (initialDuration || 0);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -18,14 +19,29 @@ const VoiceMessagePlayer = ({ src, duration: initialDuration }) => {
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
     };
+    const handleLoadedMetadata = () => {
+      if (!initialDuration || initialDuration === 0) {
+        setActualDuration(audio.duration);
+      }
+    };
     
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     return () => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
-  }, []);
+  }, [initialDuration]);
+
+  const handleSeek = (e) => {
+    const time = parseFloat(e.target.value);
+    setCurrentTime(time);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+    }
+  };
 
   const togglePlay = () => {
     if (audioRef.current.paused) {
@@ -55,13 +71,19 @@ const VoiceMessagePlayer = ({ src, duration: initialDuration }) => {
       >
         {isPlaying ? <Pause size={14} /> : <Play size={14} className="translate-x-0.5" />}
       </button>
-      <div className="flex flex-col">
-        <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
-          <div className="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all ease-linear" style={{ width: `${progress}%` }}></div>
+      <div className="flex flex-col flex-1 min-w-[80px]">
+        <input 
+          type="range"
+          min="0"
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+        />
+        <div className="flex justify-between text-[10px] text-slate-500 font-medium mt-1">
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
         </div>
-        <span className="text-[10px] text-slate-500 font-medium mt-1">
-          {isPlaying ? formatTime(currentTime) : formatTime(duration)}
-        </span>
       </div>
     </div>
   );
@@ -181,10 +203,13 @@ export default function ChatMessages({
                   <span className="text-xs text-slate-500 font-medium">Recording audio...</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium whitespace-nowrap">{otherPersonName} is typing</span>
+                  <div className="flex items-center gap-1">
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
                 </div>
               )}
             </div>

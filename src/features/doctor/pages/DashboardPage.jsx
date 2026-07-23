@@ -340,6 +340,10 @@ export default function DoctorDashboard() {
   }, [user]);
 
   const toggleAvailability = async () => {
+    if (profileData && profileData.verified === false) {
+      toast.error("You cannot go online until your account is approved by an Admin.");
+      return;
+    }
     const newStatus = isOnline ? "Offline" : "Available Now";
     // Optimistic UI update
     setIsOnline(!isOnline);
@@ -563,25 +567,37 @@ export default function DoctorDashboard() {
               <NotificationBell />
 
               {/* Elegant Simple Status Toggle */}
-              <button
-                onClick={toggleAvailability}
-                className={`group relative flex items-center gap-2.5 pl-2 pr-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 border shadow-sm ${
-                  isOnline
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
+              {profileData && profileData.verified === false ? (
                 <div
-                  className={`relative w-9 h-5 rounded-full transition-colors duration-300 shrink-0 ${isOnline ? "bg-emerald-500 shadow-inner shadow-emerald-700/20" : "bg-slate-300 shadow-inner shadow-slate-400/20"}`}
+                  className={`group relative flex items-center gap-2.5 pl-2 pr-4 py-1.5 rounded-full text-sm font-semibold border shadow-sm bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed`}
+                  title="Pending Admin Approval"
+                >
+                  <div className="relative w-9 h-5 rounded-full shrink-0 bg-slate-200 shadow-inner shadow-slate-300/20">
+                    <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm" />
+                  </div>
+                  <span className="hidden sm:inline">Pending Approval</span>
+                </div>
+              ) : (
+                <button
+                  onClick={toggleAvailability}
+                  className={`group relative flex items-center gap-2.5 pl-2 pr-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 border shadow-sm ${
+                    isOnline
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
                 >
                   <div
-                    className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ease-out ${isOnline ? "translate-x-4" : "translate-x-0"}`}
-                  />
-                </div>
-                <span className="hidden sm:inline">
-                  {isOnline ? "Accepting Patients" : "Offline"}
-                </span>
-              </button>
+                    className={`relative w-9 h-5 rounded-full transition-colors duration-300 shrink-0 ${isOnline ? "bg-emerald-500 shadow-inner shadow-emerald-700/20" : "bg-slate-300 shadow-inner shadow-slate-400/20"}`}
+                  >
+                    <div
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ease-out ${isOnline ? "translate-x-4" : "translate-x-0"}`}
+                    />
+                  </div>
+                  <span className="hidden sm:inline">
+                    {isOnline ? "Accepting Patients" : "Offline"}
+                  </span>
+                </button>
+              )}
 
               <div className="w-px h-6 bg-slate-200 hidden sm:block" />              {/* Profile Dropdown */}
               <div className="relative z-50">

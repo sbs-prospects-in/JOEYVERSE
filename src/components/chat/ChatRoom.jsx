@@ -80,15 +80,21 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
     }
   }, [consultationStatus, userRole, hasRated]);
 
+  const lastTypedAtRef = useRef(0);
+
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
     
-    if (typingChannelRef.current) {
-      typingChannelRef.current.send({
-        type: 'broadcast',
-        event: 'typing',
-        payload: { isTyping: true }
-      });
+    const now = Date.now();
+    if (now - lastTypedAtRef.current > 2000) {
+      if (typingChannelRef.current) {
+        typingChannelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { isTyping: true }
+        });
+      }
+      lastTypedAtRef.current = now;
     }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -101,7 +107,8 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
           payload: { isTyping: false }
         });
       }
-    }, 30000);
+      lastTypedAtRef.current = 0;
+    }, 3000);
   };
 
   const handleSendMessage = async (e) => {
