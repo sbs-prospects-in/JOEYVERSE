@@ -80,16 +80,17 @@ export default function DoctorDashboard() {
     if (!user?.id) return;
 
     try {
-      // 1. Fetch Doctor Status from doctor_profiles
-      const { data: profile } = await supabase
-        .from("doctor_profiles")
-        .select("status, name")
-        .eq("id", user.id)
-        .single();
+      // 1. Fetch Doctor Status from doctor_profiles & doctor_availability
+      const [{ data: profile }, { data: availability }] = await Promise.all([
+        supabase.from("doctor_profiles").select("name").eq("id", user.id).single(),
+        supabase.from("doctor_availability").select("current_status").eq("doctor_id", user.id).single()
+      ]);
 
       if (profile) {
-        setIsOnline(profile.status === "ONLINE");
         setProfileData(profile);
+      }
+      if (availability) {
+        setIsOnline(availability.current_status === "Available Now" || availability.current_status === "Accepting Requests");
       }
 
       // Helper to enrich consultations with owner names
@@ -311,17 +312,17 @@ export default function DoctorDashboard() {
       )
       .subscribe();
 
-    // Listen to doctor_profiles status changes (Realtime - for own status sync)
+    // Listen to doctor_availability status changes (Realtime - for own status sync)
     const statusChannel = supabase
       .channel("doctor_status_self")
       .on("postgres_changes", {
         event: "UPDATE",
         schema: "public",
-        table: "doctor_profiles",
-        filter: `id=eq.${user.id}`,
+        table: "doctor_availability",
+        filter: `doctor_id=eq.${user.id}`,
       }, (payload) => {
         if (payload.new) {
-          setIsOnline(payload.new.status === "ONLINE");
+          setIsOnline(payload.new.current_status === "Available Now" || payload.new.current_status === "Accepting Requests");
         }
       })
       .subscribe();
@@ -339,14 +340,13 @@ export default function DoctorDashboard() {
   }, [user]);
 
   const toggleAvailability = async () => {
-    const newStatus = isOnline ? "OFFLINE" : "ONLINE";
+    const newStatus = isOnline ? "Offline" : "Available Now";
     // Optimistic UI update
     setIsOnline(!isOnline);
     
     const { error } = await supabase
-      .from("doctor_profiles")
-      .update({ status: newStatus })
-      .eq("id", user.id);
+      .from("doctor_availability")
+      .upsert({ doctor_id: user.id, current_status: newStatus });
       
     if (error) {
       console.error("Status update error:", error);
