@@ -39,7 +39,7 @@ export default function AdminDashboardPage() {
         supabase.from('pets').select('*'),
         supabase.from('consultations').select('*').order('created_at', { ascending: false }),
         supabase.from('wallets').select('*'),
-        supabase.from('payments').select('*')
+        supabase.from('platform_revenue').select('*')
       ]);
 
       if (doctorsRes.data) setDoctors(doctorsRes.data);
@@ -157,7 +157,7 @@ export default function AdminDashboardPage() {
   };
 
   // Stats Calculation
-  const totalRevenue = revenue.reduce((acc, curr) => acc + (curr.amount ? (curr.amount * 0.2) : 0), 0); // Assuming 20% platform cut
+  const totalRevenue = revenue.reduce((acc, curr) => acc + (curr.platform_share ? Number(curr.platform_share) : 0), 0);
 
   const filteredDoctors = doctors.filter(doc => {
     const nameStr = doc.name || '';

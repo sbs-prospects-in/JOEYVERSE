@@ -241,29 +241,20 @@ export function useChatSession({ consultation, currentUserId, userRole, user, na
       const durationSeconds = Math.floor((new Date(endTime || new Date()).getTime() - new Date(consultation.started_at).getTime()) / 1000);
       const durationMinutes = Math.max(1, Math.ceil(durationSeconds / 60));
 
-      fetch('/api/billing/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          consultationId: consultation.id,
-          petOwnerId: consultation.owner_id,
-          doctorId: consultation.doctor_id,
-          durationMinutes: durationMinutes
-        })
+      supabase.rpc('process_consultation_billing', {
+        p_consultation_id: consultation.id,
+        p_pet_owner_id: consultation.owner_id,
+        p_doctor_id: consultation.doctor_id,
+        p_duration_minutes: durationMinutes
       })
-      .then(res => res.json())
-      .then(data => console.log('Billing Processed:', data))
+      .then(({ data, error }) => {
+        if (error) console.error('Billing RPC Error:', error);
+        else console.log('Billing Processed:', data);
+      })
       .catch(err => console.error('Billing Error:', err));
     }
     
-    if (consultationStatus === 'COMPLETED') {
-      const timer = setTimeout(() => {
-        navigate(`/${userRole === 'doctor' ? 'doctor' : 'pet-owner'}/dashboard`);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
+    // Removed doctor auto-redirect so they can view completed chats.
   }, [consultationStatus, userRole, consultation, endTime, user?.id, navigate]);
 
   useEffect(() => {

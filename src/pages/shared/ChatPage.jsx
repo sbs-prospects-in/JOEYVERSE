@@ -147,20 +147,16 @@ export default function ChatPage() {
       
       await supabase.from('consultations').update({ status: 'COMPLETED', ended_at: endedAt }).eq('id', id);
 
-      fetch('/api/billing/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          consultationId: id,
-          petOwnerId: consultation.owner_id,
-          doctorId: consultation.doctor_id,
-          durationMinutes: intervals
-        })
+      supabase.rpc('process_consultation_billing', {
+        p_consultation_id: id,
+        p_pet_owner_id: consultation.owner_id,
+        p_doctor_id: consultation.doctor_id,
+        p_duration_minutes: intervals
       })
-      .then(res => res.json())
-      .then(data => console.log('Billing Processed:', data))
+      .then(({ data, error }) => {
+        if (error) console.error('Billing RPC Error:', error);
+        else console.log('Billing Processed:', data);
+      })
       .catch(err => console.error('Billing Error:', err));
       
     } catch (err) {
@@ -190,14 +186,13 @@ export default function ChatPage() {
     try {
       const { error } = await supabase
         .from('consultations')
-        .update({ rating, review_text: feedback })
+        .update({ rating, feedback: feedback })
         .eq('id', id);
         
       if (error) throw error;
       toast.success("Thank you for your feedback!");
-    } catch (err) {
       console.error(err);
-      toast.error("Failed to submit review");
+      toast.error("Failed to submit review: " + (err.message || err));
     } finally {
       setShowRating(false);
       navigate('/pet-owner/dashboard');

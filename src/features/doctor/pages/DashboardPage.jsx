@@ -220,7 +220,7 @@ export default function DoctorDashboard() {
 
             const seconds = Math.floor((endedTime - startedTime) / 1000);
             const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-            const cost = intervals * c.per_minute_rate;
+            const cost = intervals * c.per_minute_rate * 0.7;
 
             eTotal += cost;
             if (endedTime >= today) {
@@ -346,7 +346,7 @@ export default function DoctorDashboard() {
     
     const { error } = await supabase
       .from("doctor_availability")
-      .upsert({ doctor_id: user.id, current_status: newStatus });
+      .upsert({ doctor_id: user.id, current_status: newStatus }, { onConflict: 'doctor_id' });
       
     if (error) {
       console.error("Status update error:", error);
@@ -446,7 +446,7 @@ export default function DoctorDashboard() {
           const startedTime = new Date(c.started_at).getTime();
           const seconds = Math.floor((endedTime - startedTime) / 1000);
           const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-          const cost = intervals * c.per_minute_rate;
+          const cost = intervals * c.per_minute_rate * 0.7;
           const dateObj = new Date(c.ended_at);
 
           if (earningsFilter === 'Today') {
@@ -1251,7 +1251,7 @@ export default function DoctorDashboard() {
                         const intervals = Math.ceil(
                           Math.max(seconds, 0) / 60,
                         );
-                        earnings = intervals * session.per_minute_rate;
+                        earnings = intervals * session.per_minute_rate * 0.7;
                       }
 
                       const dateToUse =

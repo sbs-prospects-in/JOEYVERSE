@@ -674,7 +674,7 @@ export default function ChatRoom({ consultation, currentUserId, otherPersonName 
                       let seconds = Math.floor((end - start) / 1000);
                       if (seconds < 0) seconds = 0;
                       const intervals = Math.ceil(Math.max(seconds, 0) / 60);
-                      return intervals * consultation.per_minute_rate;
+                      return intervals * consultation.per_minute_rate * 0.7;
                    })()}
                  </p>
                </div>

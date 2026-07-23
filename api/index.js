@@ -211,10 +211,12 @@ app.post('/api/wallet/deduct', async (req, res) => {
 
 // 4. Process Consultation Billing (70/30 Split)
 app.post('/api/billing/process', async (req, res) => {
+  console.log('Received billing request:', req.body);
   try {
     const { consultationId, petOwnerId, doctorId, durationMinutes } = req.body;
     
     if (!consultationId || !petOwnerId || !doctorId || durationMinutes === undefined) {
+      console.log('Missing fields in billing request');
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -223,6 +225,7 @@ app.post('/api/billing/process', async (req, res) => {
 
     const supabaseClient = createClient(process.env.VITE_SUPABASE_URL, serviceKey);
 
+    console.log('Calling RPC process_consultation_billing for consultationId:', consultationId);
     const { data: billingResult, error } = await supabaseClient.rpc('process_consultation_billing', {
       p_consultation_id: consultationId,
       p_pet_owner_id: petOwnerId,
@@ -230,11 +233,15 @@ app.post('/api/billing/process', async (req, res) => {
       p_duration_minutes: parseInt(durationMinutes, 10)
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('RPC Error:', error);
+      throw error;
+    }
 
-    res.json(billingResult);
+    console.log('Billing Result:', billingResult);
+    res.json({ success: true, result: billingResult });
   } catch (error) {
-    console.error('Billing process error:', error);
+    console.error('Error in /api/billing/process:', error);
     res.status(500).json({ error: error.message });
   }
 });

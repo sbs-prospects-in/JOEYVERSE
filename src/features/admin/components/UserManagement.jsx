@@ -43,13 +43,16 @@ export default function UserManagement({
                     <th className="px-6 py-5">Doctor Profile</th>
                     <th className="px-6 py-5">Specialization</th>
                     <th className="px-6 py-5">Consultation Rate</th>
+                    <th className="px-6 py-5">Earnings</th>
                     <th className="px-6 py-5">License & Phone</th>
                     <th className="px-6 py-5">Verification Status</th>
                     <th className="px-6 py-5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredDoctors.map(doc => (
+                  {filteredDoctors.map(doc => {
+                    const docWallet = wallets.find(w => w.user_id === doc.id);
+                    return (
                     <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -77,6 +80,9 @@ export default function UserManagement({
                             <span>Requested: ₹{doc.pending_rate_request}/min</span>
                           </div>
                         )}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-emerald-600">
+                        ₹{docWallet ? docWallet.balance : 0}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-slate-700">{doc.license_number || 'N/A'}</div>
@@ -129,7 +135,8 @@ export default function UserManagement({
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
