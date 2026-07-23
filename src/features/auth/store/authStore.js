@@ -73,7 +73,7 @@ export const useAuthStore = create((set) => ({
       const role = data.user.user_metadata?.role;
       
       if (role === 'doctor') {
-        await supabase.from('doctor_profiles').update({ status: 'ONLINE' }).eq('id', data.user.id);
+        await supabase.from('doctor_availability').update({ current_status: 'Available Now' }).eq('doctor_id', data.user.id);
       }
 
       set({ user: data.user, role, isLoading: false });
@@ -173,7 +173,7 @@ export const useAuthStore = create((set) => ({
   logout: async () => {
     const state = useAuthStore.getState();
     if (state.role === 'doctor' && state.user?.id) {
-      await supabase.from('doctor_profiles').update({ status: 'OFFLINE' }).eq('id', state.user.id);
+      await supabase.from('doctor_availability').update({ current_status: 'Offline' }).eq('doctor_id', state.user.id);
     }
     await supabase.auth.signOut();
     set({ user: null, role: null });
