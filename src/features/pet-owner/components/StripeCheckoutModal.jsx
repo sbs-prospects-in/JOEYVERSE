@@ -117,7 +117,7 @@ export default function StripeCheckoutModal({ isOpen, onClose, onSuccess }) {
         setClientSecret(data.clientSecret);
         setStep('PAYMENT');
       } else {
-        toast.error("Could not initialize payment.");
+        toast.error(data.error || "Could not initialize payment.");
       }
     } catch (err) {
       console.error(err);
