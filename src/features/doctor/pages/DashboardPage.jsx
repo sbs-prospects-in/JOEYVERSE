@@ -1290,26 +1290,20 @@ export default function DoctorDashboard() {
                                   <Calendar size={12} />
                                   {new Date(dateToUse).toLocaleDateString()}
                                 </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Middle: Rating & Feedback (If completed) */}
-                          {session.rating && (
-                            <div className="hidden xl:flex flex-col flex-1 px-4 min-w-[200px]">
-                              <div className="flex items-center gap-1 text-amber-500 mb-1">
-                                <Star size={14} fill="currentColor" />
-                                <span className="text-sm font-bold text-slate-700">
-                                  {session.rating}.0
-                                </span>
+                                {session.rating && (
+                                  <span className="inline-flex items-center gap-1 text-amber-500 text-xs sm:text-sm font-bold ml-1">
+                                    <Star size={12} fill="currentColor" />
+                                    {session.rating}.0
+                                  </span>
+                                )}
                               </div>
                               {session.feedback && (
-                                <div className="text-xs text-slate-500 line-clamp-2 italic">
+                                <div className="text-xs text-slate-500 line-clamp-1 italic mt-1">
                                   "{session.feedback}"
                                 </div>
                               )}
                             </div>
-                          )}
+                          </div>
 
                           {/* Right: Meta, Status & Actions */}
                           <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-4 sm:gap-6 border-t lg:border-t-0 border-slate-100 pt-4 lg:pt-0 shrink-0">
